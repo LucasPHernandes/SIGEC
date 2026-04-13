@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Usuários - IFFar{% endblock %}
+
+{% block page_title %}Gerenciar Usuários{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="abrirModalNovoUsuario()">
+    <i class="fas fa-plus"></i> Novo Usuário
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 20px;">
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Matrícula</th>
+                        <th>Role</th>
+                        <th>Setor</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for usuario in usuarios %}
+                    <tr>
+                        <td>#{{ usuario.id }}</td>
+                        <td>{{ usuario.nome }}</td>
+                        <td>{{ usuario.email }}</td>
+                        <td>{{ usuario.matricula or '-' }}</td>
+                        <td>
+                            <span class="badge badge-info">{{ usuario.role }}</span>
+                        </td>
+                        <td>{{ usuario.setor.nome if usuario.setor else '-' }}</td>
+                        <td>
+                            {% if usuario.ativo %}
+                            <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                            <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td style="white-space: nowrap;">
+                            <a href="{{ url_for('admin_editar_usuario', id=usuario.id) }}" class="btn-edit" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button onclick="abrirModalResetSenha('{{ usuario.id }}', '{{ usuario.nome }}')" class="btn-reset" title="Resetar Senha">
+                                <i class="fas fa-key"></i>
+                            </button>
+                            <button onclick="toggleUsuario({{ usuario.id }}, '{{ usuario.nome }}')" 
+                                    class="btn-toggle {% if usuario.ativo %}{% else %}activate{% endif %}" 
+                                    title="{% if usuario.ativo %}Desativar{% else %}Ativar{% endif %}">
+                                <i class="fas fa-{% if usuario.ativo %}ban{% else %}check-circle{% endif %}"></i>
+                            </button>
+                        </td>
+                        
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Novo Usuário -->
+<div id="modalNovoUsuario" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000;">
+    <div style="background: white; width: 500px; margin: 100px auto; padding: 20px; border-radius: 10px;">
+        <h3 style="margin-top: 0;">Novo Usuário</h3>
+        <form method="POST" action="{{ url_for('admin_novo_usuario') }}">
+            <div class="form-group">
+                <label class="form-label">Nome *</label>
+                <input type="text" name="nome" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Email *</label>
+                <input type="email" name="email" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Matrícula</label>
+                <input type="text" name="matricula" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Senha *</label>
+                <input type="password" name="senha" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Role *</label>
+                <select name="role" class="form-control" required>
+                    <option value="usuario">Usuário</option>
+                    <option value="admin">Administrador</option>
+                    <option value="professor">Professor</option>
+                    <option value="direcao">Direção</option>
+                    <option value="assistente">Assistente Estudantil</option>
+                    <option value="saude">Saúde</option>
+                    <option value="pedagogico">Pedagógico</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Setor</label>
+                <select name="setor_id" class="form-control">
+                    <option value="">Nenhum</option>
+                    {% for setor in setores %}
+                    <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" class="btn btn-outline" onclick="fecharModalNovoUsuario()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Criar Usuário</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="modalResetSenha" class="modal">
+    <div class="modal-content">
+        <h3><i class="fas fa-key"></i> Resetar Senha</h3>
+        <p>Resetando senha para: <strong id="resetNomeUsuario"></strong></p>
+        <form action="" method="POST" id="formResetSenha">
+            <div class="form-group">
+                <label for="nova_senha">Nova Senha *</label>
+                <input type="password" name="nova_senha" id="nova_senha" class="form-control" required minlength="6">
+                <small class="form-text text-muted">Mínimo de 6 caracteres</small>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="fecharModalResetSenha()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Resetar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+/* Ajustes nos modais */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+/* Ajuste para o modal de novo usuário */
+#modalNovoUsuario > div {
+    background: white;
+    width: 500px;
+    margin: 100px auto;
+    padding: 30px;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 90%;
+}
+
+    .btn-edit, .btn-reset, .btn-toggle {
+    background: none;
+    border: none;
+    padding: 6px;
+    margin: 0 2px;
+    cursor: pointer;
+    font-size: 1rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.btn-edit {
+    color: var(--primary);
+}
+
+.btn-edit:hover {
+    background: rgba(0, 66, 12, 0.1);
+    transform: scale(1.1);
+}
+
+.btn-reset {
+    color: #ffc107;
+}
+
+.btn-reset:hover {
+    background: rgba(255, 193, 7, 0.1);
+    transform: scale(1.1);
+}
+
+.btn-toggle {
+    color: #dc3545;
+}
+
+.btn-toggle:hover {
+    background: rgba(220, 53, 69, 0.1);
+    transform: scale(1.1);
+}
+
+.btn-toggle.activate {
+    color: #28a745;
+}
+
+.btn-toggle.activate:hover {
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.table td:last-child {
+    white-space: nowrap;
+    text-align: center;
+}
+
+.table td:last-child .btn-edit,
+.table td:last-child .btn-reset,
+.table td:last-child .btn-toggle {
+    margin: 0 4px;
+}
+</style>
+
+<script>
+function toggleUsuario(id, nome) {
+    // Encontra o botão correto baseado no ID
+    const buttons = document.querySelectorAll('.btn-toggle');
+    let button = null;
+    
+    for (let btn of buttons) {
+        if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(`toggleUsuario(${id}`)) {
+            button = btn;
+            break;
+        }
+    }
+    
+    const isAtivo = button && button.title === 'Desativar';
+    const acao = isAtivo ? 'desativar' : 'ativar';
+    
+    if (!confirm(`Deseja ${acao} o usuário ${nome}?`)) return;
+    
+    fetch(`/admin/usuarios/${id}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Erro ao alterar status do usuário');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao alterar status do usuário');
+    });
+}
+
+function abrirModalNovoUsuario() {
+    document.getElementById('modalNovoUsuario').style.display = 'block';
+}
+
+function fecharModalNovoUsuario() {
+    document.getElementById('modalNovoUsuario').style.display = 'none';
+}
+
+function abrirModalResetSenha(usuarioId, usuarioNome) {
+    document.getElementById('resetNomeUsuario').textContent = usuarioNome;
+    const form = document.getElementById('formResetSenha');
+    form.action = `/admin/usuarios/${usuarioId}/reset_senha`;
+    document.getElementById('modalResetSenha').style.display = 'block';
+}
+
+function fecharModalResetSenha() {
+    document.getElementById('modalResetSenha').style.display = 'none';
+    document.getElementById('nova_senha').value = '';
+}
+
+window.onclick = function(event) {
+    const modalReset = document.getElementById('modalResetSenha');
+    if (event.target == modalReset) {
+        fecharModalResetSenha();
+    }
+}
+</script>
+{% endblock %}

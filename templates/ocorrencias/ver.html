@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Ocorrência #{{ ocorrencia.id }} - SIGEC{% endblock %}
+
+{% block page_title %}Detalhes da Ocorrência{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('listar_ocorrencias') }}" class="btn btn-outline">
+        <i class="fas fa-arrow-left"></i> Voltar
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 20px;">
+    <div class="grid grid-2 mb-4">
+        <!-- Informações principais -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-info-circle"></i> Informações</h3>
+            </div>
+            <div class="card-body">
+                <h2>{{ ocorrencia.titulo }}</h2>
+                <p style="color: #666; margin: 20px 0;">{{ ocorrencia.descricao }}</p>
+                
+                <table style="width: 100%;">
+                    <tr>
+                        <td style="padding: 10px; color: #666;">Status:</td>
+                        <td style="padding: 10px;">
+                            <span class="badge badge-{{ ocorrencia.status }}">{{ ocorrencia.status }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; color: #666;">Prioridade:</td>
+                        <td style="padding: 10px;">
+                            <span class="badge badge-{{ ocorrencia.prioridade }}">{{ ocorrencia.prioridade }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 10px; color: #666;">Data Abertura:</td>
+                        <td style="padding: 10px;">{{ ocorrencia.data_abertura.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    {% if ocorrencia.data_prazo %}
+                    <tr>
+                        <td style="padding: 10px; color: #666;">Prazo:</td>
+                        <td style="padding: 10px;">
+                            {% if ocorrencia.esta_atrasada() %}
+                            <span style="color: #dc3545;">{{ ocorrencia.data_prazo.strftime('%d/%m/%Y') }} (Atrasada)</span>
+                            {% else %}
+                            {{ ocorrencia.data_prazo.strftime('%d/%m/%Y') }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                    {% if ocorrencia.data_conclusao %}
+                    <tr>
+                        <td style="padding: 10px; color: #666;">Conclusão:</td>
+                        <td style="padding: 10px;">{{ ocorrencia.data_conclusao.strftime('%d/%m/%Y %H:%M') }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+        
+        <!-- Aluno e Setores -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-users"></i> Envolvidos</h3>
+            </div>
+            <div class="card-body">
+                <div style="margin-bottom: 20px;">
+                    <h4>Aluno</h4>
+                    <p><a href="{{ url_for('ver_aluno', id=ocorrencia.aluno.id) }}">{{ ocorrencia.aluno.nome }}</a></p>
+                    <p><small>Matrícula: {{ ocorrencia.aluno.matricula }}</small></p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h4>Setores</h4>
+                    <p><strong>Origem:</strong> {{ ocorrencia.setor_origem.nome }}</p>
+                    <p><strong>Destino:</strong> {{ ocorrencia.setor_destino.nome }}</p>
+                </div>
+                
+                <div>
+                    <h4>Responsáveis</h4>
+                    <p><strong>Criado por:</strong> {{ ocorrencia.criador.nome }}</p>
+                    {% if ocorrencia.atendente %}
+                    <p><strong>Atendente:</strong> {{ ocorrencia.atendente.nome }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Atualizar Status -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3><i class="fas fa-edit"></i> Atualizar Ocorrência</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('atualizar_ocorrencia', id=ocorrencia.id) }}" style="display: flex; gap: 10px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label class="form-label">Alterar Status</label>
+                    <select name="status" class="form-control">
+                        <option value="aberta" {% if ocorrencia.status == 'aberta' %}selected{% endif %}>Aberta</option>
+                        <option value="em_andamento" {% if ocorrencia.status == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                        <option value="resolvida" {% if ocorrencia.status == 'resolvida' %}selected{% endif %}>Resolvida</option>
+                        <option value="cancelada" {% if ocorrencia.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                    </select>
+                </div>
+                <div style="flex: 2;">
+                    <label class="form-label">Comentário</label>
+                    <input type="text" name="comentario" class="form-control" placeholder="Adicionar comentário...">
+                </div>
+                <button type="submit" class="btn btn-primary">Atualizar</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Histórico -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-history"></i> Histórico</h3>
+        </div>
+        <div class="card-body">
+            <div style="max-height: 400px; overflow-y: auto;">
+                {% for item in ocorrencia.historico %}
+                <div style="padding: 15px; border-left: 3px solid #00420C; margin-bottom: 10px; background: #f9f9f9;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <strong>{{ item.usuario.nome }}</strong>
+                        <small>{{ item.data.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                    <p style="margin: 5px 0 0 0;">{{ item.descricao }}</p>
+                </div>
+                {% else %}
+                <p class="text-center">Nenhum histórico registrado</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

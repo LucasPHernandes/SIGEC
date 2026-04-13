@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SIGEC - IFFarFW{% endblock %}</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    
+
+    <style>
+        /* Badges para status */
+        .badge-aberta {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .badge-em_andamento {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .badge-resolvida {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-cancelada {
+            background: #6c757d;
+            color: white;
+        }
+
+        /* Badges para prioridade */
+        .badge-baixa {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-media {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .badge-alta {
+            background: #fd7e14;
+            color: white;
+        }
+
+        .badge-urgente {
+            background: #dc3545;
+            color: white;
+        }
+
+        /* Footer - Versão Centralizada */
+        .app-footer {
+            background: white;
+            border-top: 1px solid #e9ecef;
+            padding: 20px 24px;
+            margin-top: 40px;
+            box-shadow: 0 -2px 4px rgba(0,0,0,0.02);
+            text-align: center;
+            width: 100%;
+        }
+
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            color: #6c757d;
+            font-size: 0.95rem;
+        }
+
+        .footer-content p {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Ajuste para quando não há usuário logado */
+        body:not(.authenticated) .app-footer {
+            margin-left: 0;
+        }
+
+        /* Para garantir que o footer fique sempre no final da página */
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .main-content {
+            flex: 1 0 auto;
+        }
+
+        .app-footer {
+            flex-shrink: 0;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .app-footer {
+                padding: 15px 16px;
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="{% if current_user.is_authenticated %}authenticated{% endif %}">
+    {% if current_user.is_authenticated %}
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="{{ url_for('static', filename='images/logo-iffar.png') }}" alt="IFFar" class="logo">
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        </div>
+        
+        <div class="user-info">
+            <div class="user-avatar">
+                {% if current_user.foto_perfil %}
+                <img src="{{ url_for('static', filename=current_user.foto_perfil) }}" alt="{{ current_user.nome }}">
+                {% else %}
+                <div class="avatar-placeholder">
+                    {{ current_user.nome[:2] | upper }}
+                </div>
+                {% endif %}
+            </div>
+            <div class="user-details">
+                <span class="user-name">{{ current_user.nome }}</span>
+                <span class="user-role">
+                    {% if current_user.role == 'admin' %}Administrador
+                    {% elif current_user.role == 'direcao' %}Direção
+                    {% elif current_user.role == 'professor' %}Professor
+                    {% else %}{{ current_user.role | title }}{% endif %}
+                </span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <ul>
+                <li class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <a href="{{ url_for('dashboard') }}">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+
+                <li class="{% if request.endpoint in ['listar_conselhos', 'novo_conselho', 'ver_conselho'] %}active{% endif %}">
+                    <a href="{{ url_for('listar_conselhos') }}">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                        <span>Conselhos</span>
+                    </a>
+                </li>
+                
+                <li class="{% if request.endpoint in ['listar_alunos', 'novo_aluno', 'ver_aluno'] %}active{% endif %}">
+                    <a href="{{ url_for('listar_alunos') }}">
+                        <i class="fas fa-users"></i>
+                        <span>Alunos</span>
+                    </a>
+                </li>
+                
+                <li class="{% if request.endpoint in ['listar_ocorrencias', 'nova_ocorrencia', 'ver_ocorrencia'] %}active{% endif %}">
+                    <a href="{{ url_for('listar_ocorrencias') }}">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Ocorrências</span>
+                        {% if ocorrencias_nao_lidas %}
+                        <span class="badge">{{ ocorrencias_nao_lidas }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                
+                <li class="{% if request.endpoint == 'relatorios' %}active{% endif %}">
+                    <a href="{{ url_for('relatorios') }}">
+                        <i class="fas fa-file-alt"></i>
+                        <span>Relatórios</span>
+                    </a>
+                </li>
+                
+                {% if current_user.is_admin() %}
+                <li class="divider">Administração</li>
+                
+                <li class="{% if request.endpoint == 'admin_usuarios' %}active{% endif %}">
+                    <a href="{{ url_for('admin_usuarios') }}">
+                        <i class="fas fa-user-cog"></i>
+                        <span>Usuários</span>
+                    </a>
+                </li>
+                
+
+                <li class="nav-item">
+                    <a href="{{ url_for('importar_planilha') }}" class="nav-link">
+                        <i class="fas fa-file-import"></i>
+                        Importar Planilha
+                    </a>
+                </li>
+                
+                {% endif %}
+            </ul>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <a href="#" id="themeToggle">
+                <i class="fas fa-moon"></i>
+                <span>Tema Escuro</span>
+            </a>
+            <a href="{{ url_for('logout') }}">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Sair</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <header class="content-header">
+            <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <h1>{% block page_title %}{% endblock %}</h1>
+            
+            <div class="header-actions">
+                {% block header_actions %}{% endblock %}
+            </div>
+        </header>
+        
+        <div class="content-body">
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} animate-slide-in">
+                            {{ message }}
+                            <button class="alert-close"><i class="fas fa-times"></i></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    {% else %}
+    <!-- Public Content -->
+    {% block public_content %}{% endblock %}
+    {% endif %}
+    
+
+       {% if current_user.is_authenticated %}
+            <!-- Footer para usuários logados -->
+            <footer class="app-footer">
+                <div class="footer-content">
+                    <p>Desenvolvido por Lucas Postai Hernandes - IFFar Frederico Westphalen</p>
+                </div>
+            </footer>
+    {% endif %}
+    
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+
+</html>

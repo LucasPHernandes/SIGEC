@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Alunos - SIGEC{% endblock %}
+
+{% block page_title %}Lista de Alunos{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('novo_aluno') }}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> Novo Aluno
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 20px;">
+    <!-- Barra de busca -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('listar_alunos') }}" style="display: flex; gap: 10px;">
+                <input type="text" 
+                       name="busca" 
+                       class="form-control" 
+                       placeholder="Buscar por nome, matrícula ou CPF..."
+                       value="{{ busca }}"
+                       style="flex: 1;">
+                <select name="turma" class="form-control" style="width: 200px;">
+                    <option value="">Todas as turmas</option>
+                    {% for turma in turmas %}
+                    <option value="{{ turma.id }}" {% if request.args.get('turma')|int == turma.id %}selected{% endif %}>
+                        {{ turma.nome }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de alunos -->
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Foto</th>
+                        <th>Nome</th>
+                        <th>Matrícula</th>
+                        <th>Turma</th>
+                        <th>Situação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for aluno in alunos.items %}
+                    <tr>
+                        <td>
+                            {% if aluno.foto %}
+                            <img src="{{ url_for('static', filename=aluno.foto) }}" 
+                                 style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                            {% else %}
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #00420C; color: white; display: flex; align-items: center; justify-content: center;">
+                                {{ aluno.nome[:1] }}
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>{{ aluno.nome }}</td>
+                        <td>{{ aluno.matricula }}</td>
+                        <td>{{ aluno.turma.nome if aluno.turma else 'Sem turma' }}</td>
+                        <td>
+                            {% if aluno.situacao == 'ativo' %}
+                            <span class="badge badge-success">Ativo</span>
+                            {% else %}
+                            <span class="badge badge-danger">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td class="table-actions">
+                            <a href="{{ url_for('ver_aluno', id=aluno.id) }}" class="btn btn-sm btn-info" title="Ver">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="#" class="btn btn-sm btn-warning" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center p-4">
+                            <i class="fas fa-users fa-3x mb-3" style="color: #ccc;"></i>
+                            <p>Nenhum aluno encontrado</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginação -->
+        {% if alunos.pages > 1 %}
+        <div class="card-footer" style="display: flex; justify-content: center; gap: 5px;">
+            {% for page_num in alunos.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    <a href="{{ url_for('listar_alunos', page=page_num, busca=busca, turma=request.args.get('turma')) }}" 
+                       class="btn btn-sm {% if page_num == alunos.page %}btn-primary{% else %}btn-outline{% endif %}">
+                        {{ page_num }}
+                    </a>
+                {% else %}
+                    <span class="btn btn-sm btn-outline disabled">...</span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.table-actions {
+    display: flex;
+    gap: 5px;
+}
+.table-actions .btn {
+    padding: 5px 10px;
+}
+</style>
+{% endblock %}

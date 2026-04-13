@@ -1,0 +1,1501 @@
+{% extends "base.html" %}
+
+{% block title %}Conselho {{ conselho.turma.nome }} - SIGEC{% endblock %}
+
+{% block page_title %}
+    Conselho {{ conselho.turma.nome }}
+    <small style="font-size: 0.8rem; margin-left: 15px; color: rgba(255,255,255,0.9);">
+        {% if conselho.tipo == 'parcial1' %}Parcial 1
+        {% elif conselho.tipo == 'semestral1' %}Semestral 1
+        {% elif conselho.tipo == 'parcial2' %}Parcial 2
+        {% elif conselho.tipo == 'semestral2' %}Semestral 2
+        {% endif %} - {{ conselho.ano }}
+    </small>
+{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('listar_conselhos') }}" class="btn btn-success>
+        <i class="fas fa-arrow-left"></i> Voltar
+    </a>
+    {% if pode_editar and conselho.status == 'aberto' and alunos %}
+    <button class="btn btn-success" onclick="finalizarConselho()">
+        <i class="fas fa-check"></i> Finalizar Conselho
+    </button>
+    {% endif %}
+    {% if conselho.status == 'finalizado' and pode_editar %}
+    <a href="{{ url_for('reabrir_conselho', id=conselho.id) }}" class="btn btn-warning">
+        <i class="fas fa-folder-open"></i> Reabrir Conselho
+    </a>
+    {% endif %}
+    <a href="{{ url_for('ver_versoes_conselho', id=conselho.id) }}" class="btn btn-success">
+        <i class="fas fa-history"></i> Histórico de Versões
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{% if conselho.versao_atual > 1 %}
+<div class="alert alert-info" style="margin-bottom: 20px;">
+    <i class="fas fa-history"></i> 
+    <strong>Conselho Reaberto (v{{ conselho.versao_atual }})</strong><br>
+    Este conselho foi reaberto. As considerações iniciais e observações gerais foram mantidas da versão anterior.<br>
+    As decisões anteriores estão arquivadas e podem ser consultadas no 
+    <a href="{{ url_for('ver_versoes_conselho', id=conselho.id) }}" class="alert-link">histórico de versões</a>.
+</div>
+{% endif %}
+
+<div class="conselho-slide-container">
+
+    {% if conselho.status == 'finalizado' %}
+    <div class="aviso-finalizado">
+        <i class="fas fa-lock"></i> 
+        Conselho finalizado em {{ conselho.data_fim.strftime('%d/%m/%Y %H:%M') }} - Modo apenas visualização
+        <a href="{{ url_for('ver_ata_conselho', id=conselho.id) }}" class="btn-ata">
+            <i class="fas fa-file-alt"></i> Ver Ata
+        </a>
+        <a href="{{ url_for('download_ata_conselho', id=conselho.id) }}" class="btn-ata-download">
+            <i class="fas fa-download"></i> Download Ata
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Cabeçalho do Conselho -->
+    <div class="conselho-header-card">
+        <div class="conselho-info">
+            <div class="info-item">
+                <i class="fas fa-code-branch"></i>
+                <span>Versão: {{ conselho.versao_atual }}</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-calendar"></i>
+                <span>Data: {{ conselho.data_inicio.strftime('%d/%m/%Y %H:%M') }}</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-users"></i>
+                <span>Total da Turma: {{ total_alunos }} alunos</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+                <span>Em Conselho: {{ alunos_com_nota_baixa }}</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-gavel" style="color: #28a745;"></i>
+                <span>Decididos: {{ alunos_decididos }}</span>
+            </div>
+        </div>
+        <div class="conselho-status-badge {{ conselho.status }}">
+            {{ conselho.status|title }}
+        </div>
+    </div>
+
+    {% if alunos %}
+        <!-- Barra de Progresso -->
+        <div class="progresso-container">
+            <div class="progresso-info">
+                <span><i class="fas fa-chart-line"></i> Progresso do Conselho</span>
+                <span class="progresso-contador">{{ alunos_decididos }}/{{ alunos_com_nota_baixa }} alunos decididos</span>
+            </div>
+            <div class="progresso-bar">
+                <div class="progresso-fill" style="width: {{ (alunos_decididos / alunos_com_nota_baixa * 100) if alunos_com_nota_baixa > 0 else 0 }}%"></div>
+            </div>
+        </div>
+
+        <div class="consideracoes-card">
+            <div class="card-header">
+                <h3><i class="fas fa-clipboard-list"></i> Considerações Iniciais do Conselho</h3>
+                {% if pode_editar and conselho.status == 'aberto' %}
+                <div class="card-actions">
+                    <button class="btn-save-consideracoes" onclick="salvarConsideracoes()">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if pode_editar and conselho.status == 'aberto' %}
+                <textarea id="consideracoesIniciais" 
+                          class="consideracoes-textarea" 
+                          placeholder="Registre aqui as considerações iniciais sobre o conselho, objetivos, metodologia, etc.&#10;&#10;Exemplo:&#10;- Objetivo do conselho: analisar o desempenho do 1º bimestre&#10;- Metodologia: análise individual de cada aluno seguida de deliberação coletiva&#10;- Participantes: professores de todas as disciplinas, coordenação pedagógica e equipe técnica">{{ consideracoes_iniciais }}</textarea>
+                {% else %}
+                <div class="consideracoes-visualizacao">
+                    {{ consideracoes_iniciais or 'Nenhuma consideração inicial registrada.' }}
+                </div>
+                {% endif %}
+                <div class="consideracoes-info">
+                    <small>
+                        <i class="fas fa-info-circle"></i> 
+                        Estas considerações serão incluídas na ata final do conselho.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Miniaturas/Navegação Rápida -->
+        <div class="alunos-thumbnails">
+            {% for aluno in alunos_thumbnails %}
+            {% set slide_index = mapa_indices[loop.index0] %}
+            <div class="thumbnail-item {% if aluno.tem_nota_baixa %}em-conselho{% endif %} {% if slide_index == 0 %}active{% endif %}" 
+                data-indice="{{ slide_index }}"
+                title="{{ aluno.nome }}">
+                <div class="thumbnail-foto">
+                    {% if aluno.foto %}
+                    <img src="{{ url_for('static', filename=aluno.foto) }}" alt="{{ aluno.nome }}">
+                    {% else %}
+                    <div class="thumbnail-placeholder" style="background: {% if aluno.tem_nota_baixa %}#ffc107{% else %}#00420C{% endif %};">
+                        {{ aluno.nome[:1] }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="thumbnail-status {{ aluno.status }}"></div>
+                <!-- Badge com a pior nota -->
+                <div class="thumbnail-nota" style="position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; border-radius: 10px; padding: 2px 5px; font-size: 0.7rem; font-weight: bold;">
+                    {% set pior_nota = namespace(value=10) %}
+                    {% for disc in aluno.disciplinas_notas %}
+                        {% if disc.nota_principal is not none and disc.nota_principal < pior_nota.value %}
+                            {% set pior_nota.value = disc.nota_principal %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if pior_nota.value < 10 %}
+                        {{ "%.1f"|format(pior_nota.value) }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Área Principal do Slide -->
+        <div class="slide-principal">
+            <button class="nav-btn nav-prev" id="btnPrev">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <button class="nav-btn nav-next" id="btnNext">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+
+            <!-- Container dos Slides -->
+            <div class="slides-container">
+                {% for aluno in alunos %}
+                <div class="slide-item {% if loop.first %}active{% endif %}" data-indice="{{ loop.index0 }}" id="slide-{{ loop.index0 }}">
+                    <!-- Card do Aluno -->
+                    <div class="aluno-slide-card {% if aluno.tem_nota_baixa %}em-conselho{% endif %}">
+                        <!-- Cabeçalho com foto e informações principais -->
+                        <div class="slide-header">
+                            <div class="slide-foto-grande">
+                                {% if aluno.foto %}
+                                <img src="{{ url_for('static', filename=aluno.foto) }}" alt="{{ aluno.nome }}">
+                                {% else %}
+                                <div class="foto-grande-placeholder" style="background: {% if aluno.tem_nota_baixa %}#ffc107{% else %}#00420C{% endif %};">
+                                    {{ aluno.nome[:2] }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="slide-info-principal">
+                                <h2>{{ aluno.nome }}</h2>
+                                <p class="matricula">Matrícula: {{ aluno.matricula }}</p>
+                                <div class="slide-badges">
+                                    {% if aluno.tem_nota_baixa %}
+                                    <span class="badge badge-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> Em Conselho
+                                    </span>
+                                    {% endif %}
+                                    {% if aluno.interno %}
+                                    <span class="badge badge-interno">
+                                        <i class="fas fa-bed"></i> Interno - Quarto {{ aluno.quarto or 'N/I' }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge badge-externo">
+                                        <i class="fas fa-home"></i> Externo
+                                    </span>
+                                    {% endif %}
+                                    <span class="badge status-{{ aluno.status }}" id="status-badge-{{ aluno.id }}">
+                                        <i class="fas 
+                                            {% if aluno.status == 'pendente' %}fa-clock
+                                            {% elif aluno.status == 'aprovado' %}fa-check-circle
+                                            {% else %}fa-times-circle{% endif %}">
+                                        </i>
+                                        {% if aluno.status == 'pendente' %}Pendente
+                                        {% elif aluno.status == 'aprovado' %}Aprovado
+                                        {% else %}Reprovado{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="slide-contador">
+                                {{ loop.index }}/{{ alunos|length }}
+                            </div>
+                        </div>
+            
+                        <div class="slide-grid">
+                            <!-- Coluna Esquerda: Notas -->
+                            <div class="slide-coluna esquerda">
+                                <div class="slide-card">
+                                    <h3>
+                                        <i class="fas fa-book"></i> {{ aluno.config_notas.titulo }}
+                                        <small style="font-size: 0.7rem; font-weight: normal;">(notas abaixo de 7.0 em destaque)</small>
+                                    </h3>
+                                    
+                                    <div class="legenda-cores" style="display: flex; gap: 15px; margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; flex-wrap: wrap;">
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            <span style="display: inline-block; width: 20px; height: 20px; background: #28a745; border-radius: 4px;"></span>
+                                            <span style="font-size: 0.75rem;">≥ 7.0 (Aprovado)</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            <span style="display: inline-block; width: 20px; height: 20px; background: #ffc107; border-radius: 4px;"></span>
+                                            <span style="font-size: 0.75rem;">6.0 - 6.9 (Atenção)</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            <span style="display: inline-block; width: 20px; height: 20px; background: #fd7e14; border-radius: 4px;"></span>
+                                            <span style="font-size: 0.75rem;">5.0 - 5.9 (Risco)</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 5px;">
+                                            <span style="display: inline-block; width: 20px; height: 20px; background: #dc3545; border-radius: 4px;"></span>
+                                            <span style="font-size: 0.75rem;">&lt; 5.0 (Crítico)</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- TABELA DE NOTAS -->
+                                    <div style="overflow-x: auto;">
+                                        <table class="notas-tabela">
+                                            <thead>
+                                                <tr>
+                                                    <th>Disciplina</th>
+                                                    {% for label in aluno.config_notas.labels %}
+                                                    <th>{{ label }}</th>
+                                                    {% endfor %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for disc in aluno.disciplinas_notas %}
+                                                <tr class="{% if disc.abaixo_media %}disciplina-abaixo{% endif %}">
+                                                    <td class="disciplina-nome-tabela" title="{{ disc.disciplina }}">
+                                                        <i class="fas fa-book"></i> {{ disc.disciplina }}
+                                                    </td>
+                                                    {% for campo in aluno.config_notas.campos %}
+                                                    <td class="nota-cell">
+                                                        {% if campo in disc.notas %}
+                                                        <span class="nota-valor {% if disc.notas[campo] >= 7.0 %}nota-aprovado{% elif disc.notas[campo] >= 6.0 %}nota-atencao{% elif disc.notas[campo] >= 5.0 %}nota-risco{% else %}nota-critico{% endif %}" 
+                                                              data-nota="{{ disc.notas[campo] }}"
+                                                              title="Nota {{ disc.notas[campo] }}">
+                                                            {{ "%.1f"|format(disc.notas[campo]) }}
+                                                        </span>
+                                                        {% else %}
+                                                        <span class="nota-valor nota-indisponivel" title="Nota não registrada">—</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    {% endfor %}
+                                                </tr>
+                                                {% else %}
+                                                <tr>
+                                                    <td colspan="{{ aluno.config_notas.labels|length + 3 }}" class="sem-dados-tabela">
+                                                        <i class="fas fa-info-circle"></i> Nenhuma nota registrada
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+            
+                            <!-- Coluna Direita: Ocorrências -->
+                            <div class="slide-coluna direita">
+                                <div class="slide-card">
+                                    <h3>
+                                        <i class="fas fa-exclamation-circle"></i> 
+                                        Ocorrências no Período
+                                        {% if pode_editar and conselho.status == 'aberto' %}
+                                        <button type="button" class="btn-selecionar-todas" data-aluno-id="{{ aluno.id }}" style="font-size: 0.7rem; padding: 2px 8px;">
+                                            <i class="fas fa-check-double"></i> Selecionar todas
+                                        </button>
+                                        {% endif %}
+                                    </h3>
+                            
+                                    <div class="ocorrencias-lista">
+                                        {% for ocorrencia in aluno.ocorrencias %}
+                                        <div class="ocorrencia-card" data-ocorrencia-id="{{ ocorrencia.id }}">
+                                            {% if pode_editar and conselho.status == 'aberto' %}
+                                            <div class="ocorrencia-checkbox">
+                                                <input type="checkbox" 
+                                                    class="ocorrencia-checkbox-input" 
+                                                    data-aluno-id="{{ aluno.id }}"
+                                                    data-ocorrencia-id="{{ ocorrencia.id }}"
+                                                    onchange="toggleOcorrenciaSelecionada({{ aluno.id }}, {{ ocorrencia.id }}, this.checked)"
+                                                    {% if ocorrencia.id in aluno.ocorrencias_selecionadas %}checked{% endif %}>
+                                            </div>
+                                            {% endif %}
+                                            <div class="ocorrencia-tipo-badge" style="background: {{ ocorrencia.tipo.cor }};">
+                                                {{ ocorrencia.tipo.nome }}
+                                            </div>
+                                            <div class="ocorrencia-conteudo">
+                                                <div class="ocorrencia-titulo">
+                                                    {{ ocorrencia.titulo }}
+                                                </div>
+                                                <div class="ocorrencia-meta">
+                                                    <span class="meta-item">
+                                                        <i class="fas fa-calendar"></i>
+                                                        {{ ocorrencia.data_abertura[:10] }}
+                                                    </span>
+                                                    <span class="badge status-{{ ocorrencia.status }}">
+                                                        {{ ocorrencia.status }}
+                                                    </span>
+                                                    <span class="badge prioridade-{{ ocorrencia.prioridade }}">
+                                                        {{ ocorrencia.prioridade }}
+                                                    </span>
+                                                    <a href="{{ url_for('ver_ocorrencia', id=ocorrencia.id) }}" class="btn-icone" target="_blank">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                </div>
+                                                <div class="ocorrencia-descricao" style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                                                    {{ ocorrencia.descricao[:100] }}{% if ocorrencia.descricao|length > 100 %}...{% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="sem-dados">
+                                            <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                                            Sem ocorrências no período
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+            
+                        <!-- Área de Parecer e Encaminhamentos -->
+                        <div class="slide-parecer-area">
+                            <div class="parecer-grid">
+                                <div class="parecer-coluna">
+                                    <h4><i class="fas fa-comment"></i> Parecer do Conselho</h4>
+                                    {% if pode_editar and conselho.status == 'aberto' %}
+                                    <textarea class="parecer-textarea" placeholder="Digite o parecer sobre este aluno..." data-aluno-id="{{ aluno.id }}" data-campo="parecer" onkeyup="autoSave({{ aluno.id }})">{{ aluno.parecer or '' }}</textarea>
+                                    {% else %}
+                                    <div class="visualizacao-texto" id="parecer-visualizacao-{{ aluno.id }}">{{ aluno.parecer or 'Nenhum parecer registrado.' }}</div>
+                                    {% endif %}
+                                </div>
+                                <div class="parecer-coluna">
+                                    <h4><i class="fas fa-tasks"></i> Encaminhamentos</h4>
+                                    {% if pode_editar and conselho.status == 'aberto' %}
+                                    <div class="modelos-dropdown" style="margin-bottom: 10px;">
+                                        <label for="modelo-select-{{ aluno.id }}" class="form-label" style="font-size: 0.85rem;"><i class="fas fa-copy"></i> Modelos prontos:</label>
+                                        <select id="modelo-select-{{ aluno.id }}" class="modelo-select" data-aluno-id="{{ aluno.id }}" style="width: 100%; padding: 8px; border: 2px solid #e9ecef; border-radius: var(--radius-sm);">
+                                            <option value="">-- Selecione um modelo --</option>
+                                        </select>
+                                    </div>
+                                    <textarea class="encaminhamentos-textarea" placeholder="Digite os encaminhamentos..." data-aluno-id="{{ aluno.id }}" data-campo="encaminhamentos" onkeyup="autoSave({{ aluno.id }})">{{ aluno.encaminhamentos or '' }}</textarea>
+                                    {% else %}
+                                    <div class="visualizacao-texto" id="encaminhamentos-visualizacao-{{ aluno.id }}">{{ aluno.encaminhamentos or 'Nenhum encaminhamento registrado.' }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+            
+                            <!-- Ações do Aluno -->
+                            <div class="aluno-actions-bar">
+                                <div class="status-selector">
+                                    <label>Decisão do Conselho:</label>
+                                    {% if pode_editar and conselho.status == 'aberto' %}
+                                    <select class="status-select" data-aluno-id="{{ aluno.id }}" onchange="salvarAluno({{ aluno.id }})">
+                                        <option value="pendente" {% if aluno.status == 'pendente' %}selected{% endif %}>⏳ Pendente (não discutido)</option>
+                                        <option value="aprovado" {% if aluno.status == 'aprovado' %}selected{% endif %}>✅ Aprovado em Conselho</option>
+                                        <option value="reprovado" {% if aluno.status == 'reprovado' %}selected{% endif %}>❌ Reprovado em Conselho</option>
+                                    </select>
+                                    {% else %}
+                                    <span class="decisao-final status-{{ aluno.status }}">
+                                        {% if aluno.status == 'aprovado' %}✅ Aprovado{% elif aluno.status == 'reprovado' %}❌ Reprovado{% else %}⏳ Pendente{% endif %}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                {% if pode_editar and conselho.status == 'aberto' %}
+                                <div class="action-buttons">
+                                    <button class="btn-save" onclick="salvarAluno({{ aluno.id }})"><i class="fas fa-save"></i> Salvar</button>
+                                    <button class="btn-next" onclick="navegar('next')" {% if loop.last %}disabled{% endif %}>Próximo <i class="fas fa-arrow-right"></i></button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon"><i class="fas fa-check-circle"></i></div>
+            <h2>Nenhum aluno precisa de conselho!</h2>
+            <p>Todos os alunos desta turma estão com notas acima de 7.0 em todas as disciplinas.</p>
+            <div class="empty-state-stats">
+                <div class="stat-item"><span class="stat-label">Total de alunos na turma</span><span class="stat-value">{{ total_alunos }}</span></div>
+                <div class="stat-item"><span class="stat-label">Alunos com notas ≥ 7.0</span><span class="stat-value">{{ total_alunos }}</span></div>
+            </div>
+            {% if conselho.status == 'aberto' %}
+            <button class="btn btn-success" onclick="finalizarConselho()"><i class="fas fa-check"></i> Finalizar Conselho</button>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% if conselho.status == 'aberto' and alunos %}
+    <div id="finalizarModal" class="modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-check-circle" style="color: #28a745;"></i> Finalizar Conselho</h3>
+            <p>Você está prestes a finalizar o conselho da turma <strong>{{ conselho.turma.nome }}</strong>.</p>
+            <p>Certifique-se de que todos os alunos foram discutidos e as decisões foram registradas.</p>
+            <textarea id="observacoesFinais" class="form-control" placeholder="Observações gerais do conselho (opcional)..." rows="4"></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="fecharModal()"><i class="fas fa-times"></i> Cancelar</button>
+                <button class="btn btn-success" onclick="confirmarFinalizacao()"><i class="fas fa-check"></i> Finalizar Conselho</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+/* Badge para aluno interno */
+.badge-interno { background: rgba(0, 66, 12, 0.15); color: var(--primary); border-left: 3px solid var(--primary); padding: 6px 12px; border-radius: 30px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; }
+.badge-interno i { color: var(--primary); font-size: 0.9rem; }
+.badge-externo { background: rgba(108, 117, 125, 0.1); color: #6c757d; border-left: 3px solid #6c757d; padding: 6px 12px; border-radius: 30px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 5px; }
+.badge-externo i { color: #6c757d; font-size: 0.9rem; }
+.slide-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.slide-badges .badge { margin: 0; white-space: nowrap; }
+
+/* Aviso de conselho finalizado */
+.aviso-finalizado { background: #e9ecef; border-left: 4px solid #6c757d; padding: 15px 20px; margin-bottom: 20px; border-radius: var(--radius-sm); display: flex; align-items: center; gap: 15px; flex-wrap: wrap; color: #495057; }
+.aviso-finalizado i { font-size: 1.2rem; color: #6c757d; }
+.btn-ata, .btn-ata-download { padding: 6px 12px; border-radius: var(--radius-sm); text-decoration: none; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 5px; transition: all 0.2s; }
+.btn-ata i, .btn-ata-download i { color: white; opacity: 0.6; }
+.btn-ata { background: var(--primary); color: white; }
+.btn-ata-download { background: var(--primary-dark); color: white; }
+.btn-ata:hover, .btn-ata-download:hover { transform: translateY(-2px); color: white; opacity: 0.9; }
+
+/* Visualização de texto não editável */
+.visualizacao-texto { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: var(--radius-sm); padding: 15px; min-height: 100px; color: #212529; line-height: 1.5; white-space: pre-wrap; }
+
+/* Decisão final */
+.decisao-final { padding: 8px 16px; border-radius: 30px; font-weight: 500; display: inline-block; }
+.decisao-final.status-aprovado { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+.decisao-final.status-reprovado { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+.decisao-final.status-pendente { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+
+.conselho-slide-container { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+/* Considerações Iniciais */
+.consideracoes-card { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); margin-bottom: 24px; overflow: hidden; }
+.consideracoes-card .card-header { background: #f8f9fa; padding: 16px 24px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center; }
+.consideracoes-card .card-header h3 { margin: 0; font-size: 1.1rem; color: #495057; display: flex; align-items: center; gap: 10px; }
+.consideracoes-card .card-header h3 i { color: var(--primary); }
+.consideracoes-card .card-body { padding: 24px; }
+.consideracoes-textarea { width: 100%; min-height: 150px; padding: 15px; border: 2px solid #e9ecef; border-radius: var(--radius-md); font-size: 0.95rem; line-height: 1.5; resize: vertical; transition: all 0.2s; }
+.consideracoes-textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1); }
+.consideracoes-visualizacao { background: #f8f9fa; border-radius: var(--radius-md); padding: 20px; color: #495057; line-height: 1.6; white-space: pre-wrap; min-height: 100px; }
+.consideracoes-info { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; font-size: 0.8rem; color: #6c757d; }
+.btn-save-consideracoes { background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+.btn-save-consideracoes:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
+/* Cabeçalho do Conselho */
+.conselho-header-card { background: white; border-radius: var(--radius-md); padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; }
+.conselho-info { display: flex; flex-wrap: wrap; gap: 24px; }
+.info-item { display: flex; align-items: center; gap: 8px; color: #495057; }
+.info-item i { color: var(--primary); width: 20px; }
+.conselho-status-badge { padding: 6px 16px; border-radius: 30px; font-weight: 500; font-size: 0.9rem; }
+.conselho-status-badge.aberto { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+.conselho-status-badge.finalizado { background: rgba(108, 117, 125, 0.1); color: #6c757d; }
+
+/* Barra de Progresso */
+.progresso-container { background: white; border-radius: var(--radius-md); padding: 15px 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm); }
+.progresso-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: #495057; }
+.progresso-bar { height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+.progresso-fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.3s ease; }
+
+/* Miniaturas/Navegação Rápida */
+.alunos-thumbnails { display: flex; gap: 8px; overflow-x: auto; padding: 10px 5px; margin-bottom: 20px; scrollbar-width: thin; }
+.alunos-thumbnails::-webkit-scrollbar { height: 6px; }
+.alunos-thumbnails::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 3px; }
+.thumbnail-item { flex: 0 0 50px; cursor: pointer; position: relative; opacity: 0.7; transition: all 0.2s; }
+.thumbnail-item:hover { opacity: 1; transform: translateY(-2px); }
+.thumbnail-item.active { opacity: 1; transform: scale(1.1); }
+.thumbnail-foto { width: 50px; height: 50px; border-radius: 50%; overflow: hidden; border: 3px solid transparent; }
+.thumbnail-item.active .thumbnail-foto { border-color: var(--primary); }
+.thumbnail-foto img { width: 100%; height: 100%; object-fit: cover; }
+.thumbnail-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; font-weight: bold; }
+.thumbnail-status { position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; }
+.thumbnail-status.pendente { background: #ffc107; }
+.thumbnail-status.aprovado { background: #28a745; }
+.thumbnail-status.reprovado { background: #dc3545; }
+
+/* Área Principal do Slide */
+.slide-principal { position: relative; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; }
+.nav-btn { position: absolute; top: 50%; transform: translateY(-50%); width: 50px; height: 50px; border-radius: 50%; background: white; border: none; box-shadow: var(--shadow-md); cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--primary); transition: all 0.2s; }
+.nav-btn:hover:not(:disabled) { background: var(--primary); color: white; transform: translateY(-50%) scale(1.1); }
+.nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.nav-prev { left: 20px; }
+.nav-next { right: 20px; }
+.slides-container { position: relative; min-height: 700px; }
+.slide-item { position: absolute; top: 0; left: 0; width: 100%; opacity: 0; visibility: hidden; transition: all 0.3s ease; padding: 30px; }
+.slide-item.active { opacity: 1; visibility: visible; position: relative; }
+
+/* Card do Aluno no Slide */
+.aluno-slide-card.aprovado { border-left: 4px solid #28a745; }
+.aluno-slide-card.reprovado { border-left: 4px solid #dc3545; }
+.aluno-slide-card.em-conselho { border-left: 4px solid #ffc107; }
+
+/* Cabeçalho do Slide */
+.slide-header { display: flex; align-items: center; gap: 30px; padding: 30px; background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); border-bottom: 2px solid #e9ecef; }
+.slide-foto-grande { width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 4px solid white; box-shadow: var(--shadow-md); }
+.slide-foto-grande img { width: 100%; height: 100%; object-fit: cover; }
+.foto-grande-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-size: 2.5rem; font-weight: bold; }
+.slide-info-principal { flex: 1; }
+.slide-info-principal h2 { margin: 0 0 8px 0; font-size: 2rem; color: #212529; }
+.slide-info-principal .matricula { margin: 0 0 12px 0; color: #6c757d; font-size: 1rem; }
+.slide-badges .badge { padding: 6px 16px; font-size: 0.9rem; border-radius: 30px; }
+.badge.status-pendente { background: rgba(255, 193, 7, 0.1); color: #ffc107; border-left: 3px solid #ffc107; }
+.badge.status-aprovado { background: rgba(40, 167, 69, 0.1); color: #28a745; border-left: 3px solid #28a745; }
+.badge.status-reprovado { background: rgba(220, 53, 69, 0.1); color: #dc3545; border-left: 3px solid #dc3545; }
+.slide-contador { font-size: 1.2rem; color: #6c757d; font-weight: 500; }
+
+/* Grid de 2 Colunas */
+.slide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding: 30px; }
+.slide-card { background: #f8f9fa; border-radius: var(--radius-md); padding: 20px; height: fit-content; }
+.slide-card h3 { margin: 0 0 20px 0; font-size: 1.1rem; color: #495057; display: flex; align-items: center; justify-content: space-between; }
+.slide-card h3 i { color: var(--primary); margin-right: 8px; }
+
+/* Lista de Disciplinas */
+.disciplinas-lista { max-height: 300px; overflow-y: auto; padding-right: 10px; }
+.disciplina-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #e9ecef; }
+.disciplina-item:last-child { border-bottom: none; }
+.disciplina-item.abaixo-media { background: rgba(255, 193, 7, 0.1); border-radius: var(--radius-sm); }
+.disciplina-nome { font-size: 0.95rem; color: #212529; }
+.disciplina-nota { font-weight: 600; padding: 4px 12px; border-radius: 20px; background: white; }
+.disciplina-nota.nota-baixa { background: #ffc107; color: #212529; }
+
+/* Frequência */
+.frequencia-detalhes { display: flex; justify-content: space-around; padding: 15px; }
+.frequencia-item { text-align: center; }
+.frequencia-item span { display: block; color: #6c757d; font-size: 0.9rem; margin-bottom: 5px; }
+.frequencia-item strong { font-size: 1.5rem; color: #212529; }
+.text-danger { color: #dc3545 !important; }
+
+/* Lista de Ocorrências */
+.ocorrencias-lista { max-height: 400px; overflow-y: auto; padding-right: 10px; }
+.ocorrencia-card { display: flex; gap: 15px; padding: 15px; background: white; border-radius: var(--radius-sm); margin-bottom: 10px; border: 1px solid #e9ecef; }
+.ocorrencia-tipo-badge { flex: 0 0 80px; padding: 4px 8px; border-radius: 4px; color: white; font-size: 0.8rem; text-align: center; height: fit-content; }
+.ocorrencia-conteudo { flex: 1; }
+.ocorrencia-titulo { font-weight: 500; margin-bottom: 8px; color: #212529; }
+.ocorrencia-meta { display: flex; align-items: center; gap: 12px; font-size: 0.85rem; color: #6c757d; flex-wrap: wrap; }
+.meta-item i { margin-right: 4px; }
+
+/* Badges de Status e Prioridade */
+.badge.status-aberta { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+.badge.status-em_atendimento { background: rgba(23, 162, 184, 0.1); color: #17a2b8; }
+.badge.status-resolvida { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+.badge.prioridade-baixa { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+.badge.prioridade-media { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+.badge.prioridade-alta { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+.badge.prioridade-urgente { background: rgba(220, 53, 69, 0.2); color: #dc3545; }
+
+.btn-icone { color: var(--primary); text-decoration: none; padding: 4px 8px; }
+.btn-icone:hover { background: rgba(0, 66, 12, 0.1); border-radius: 4px; }
+.ver-todas-link { font-size: 0.85rem; color: var(--primary); text-decoration: none; }
+.ver-todas-link:hover { text-decoration: underline; }
+
+/* Área de Parecer */
+.slide-parecer-area { padding: 0 30px 30px 30px; }
+.parecer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 20px; }
+.parecer-coluna h4 { margin: 0 0 12px 0; font-size: 1rem; color: #495057; }
+.parecer-coluna h4 i { color: var(--primary); margin-right: 8px; }
+.parecer-textarea, .encaminhamentos-textarea { width: 100%; padding: 15px; border: 2px solid #e9ecef; border-radius: var(--radius-sm); font-size: 0.95rem; resize: vertical; min-height: 100px; transition: all 0.2s; }
+.parecer-textarea:focus, .encaminhamentos-textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1); }
+
+/* Barra de Ações */
+.aluno-actions-bar { display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #f8f9fa; border-radius: var(--radius-md); }
+.status-selector { display: flex; align-items: center; gap: 12px; }
+.status-selector label { font-size: 0.95rem; color: #495057; font-weight: 500; }
+.status-select { padding: 10px 20px; border: 2px solid #e9ecef; border-radius: var(--radius-sm); font-size: 0.95rem; min-width: 150px; cursor: pointer; }
+.action-buttons { display: flex; gap: 12px; }
+.btn-save { padding: 12px 24px; background: var(--primary); color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.btn-save:hover { background: var(--primary-dark); transform: translateY(-2px); }
+.btn-next { padding: 12px 24px; background: #17a2b8; color: white; border: none; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; font-size: 0.95rem; }
+.btn-next:hover:not(:disabled) { background: #138496; transform: translateY(-2px); }
+.btn-next:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Estados vazios */
+.sem-dados { text-align: center; padding: 30px; color: #6c757d; font-size: 0.95rem; background: white; border-radius: var(--radius-sm); }
+
+/* Modal */
+.modal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.6); z-index: 999999; margin: 0; padding: 0; }
+.modal.show { display: block; }
+.modal-content { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: var(--radius-lg); max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); animation: modalFadeIn 0.3s ease; }
+@media (max-width: 768px) { .modal-content { width: 95%; padding: 20px; } }
+@keyframes modalFadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+.modal-content h3 { margin: 0 0 15px 0; color: #212529; font-size: 1.5rem; border-bottom: 2px solid #e9ecef; padding-bottom: 15px; }
+.modal-content p { color: #6c757d; margin-bottom: 20px; }
+.modal-content textarea { width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: var(--radius-sm); font-size: 0.95rem; margin-bottom: 20px; resize: vertical; }
+.modal-content textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px; }
+.modal-actions .btn { padding: 10px 20px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; font-size: 0.95rem; }
+.modal-actions .btn-outline { background: transparent; border: 2px solid #e9ecef; color: #495057; }
+.modal-actions .btn-outline:hover { background: #f8f9fa; border-color: #ced4da; }
+.modal-actions .btn-success { background: #28a745; border: none; color: white; }
+.modal-actions .btn-success:hover { background: #218838; transform: translateY(-2px); }
+
+/* Empty State */
+.empty-state { text-align: center; padding: 60px 20px; background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.empty-state-icon { font-size: 5rem; color: #28a745; margin-bottom: 20px; }
+.empty-state h2 { color: #212529; margin-bottom: 10px; }
+.empty-state p { color: #6c757d; margin-bottom: 30px; }
+.empty-state-stats { display: flex; justify-content: center; gap: 40px; margin: 30px 0; }
+.stat-item { text-align: center; }
+.stat-label { display: block; color: #6c757d; font-size: 0.9rem; margin-bottom: 5px; }
+.stat-value { display: block; font-size: 2rem; font-weight: bold; color: var(--primary); }
+
+/* Responsividade */
+@media (max-width: 1024px) { .slide-grid, .parecer-grid { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { 
+    .conselho-slide-container { padding: 16px; }
+    .slide-header { flex-direction: column; text-align: center; }
+    .slide-badges { justify-content: center; }
+    .aluno-actions-bar { flex-direction: column; gap: 15px; }
+    .status-selector { width: 100%; }
+    .status-select { width: 100%; }
+    .action-buttons { width: 100%; }
+    .btn-save, .btn-next { flex: 1; }
+    .nav-btn { width: 40px; height: 40px; }
+    .nav-prev { left: 10px; }
+    .nav-next { right: 10px; }
+}
+@media (max-width: 480px) { 
+    .slide-item { padding: 15px; }
+    .slide-header { padding: 20px; }
+    .slide-foto-grande { width: 100px; height: 100px; }
+    .slide-info-principal h2 { font-size: 1.5rem; }
+    .slide-grid { padding: 20px; gap: 20px; }
+    .slide-parecer-area { padding: 0 20px 20px 20px; }
+}
+
+/* Badge warning */
+.badge-warning { background: rgba(255, 193, 7, 0.1); color: #ffc107; border-left: 3px solid #ffc107; }
+
+/* Form controls */
+.form-control { width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: var(--radius-sm); font-size: 0.95rem; transition: all 0.2s; }
+.form-control:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1); }
+
+/* Botões outline */
+.btn-outline { background: transparent; border: 2px solid white; color: white; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+.btn-outline:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-2px); }
+.btn-success { background: #28a745; border: none; color: white; padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+.btn-success:hover { background: #218838; transform: translateY(-2px); }
+
+/* Dropdown de modelos */
+.modelos-dropdown { background: #f8f9fa; padding: 10px; border-radius: var(--radius-md); margin-bottom: 10px; }
+.modelos-dropdown label { display: block; margin-bottom: 5px; color: #495057; font-weight: 500; }
+.modelo-select { width: 100%; padding: 8px 12px; border: 2px solid #e9ecef; border-radius: var(--radius-sm); background: white; cursor: pointer; font-size: 0.85rem; }
+.modelo-select:focus { border-color: var(--primary); outline: none; }
+
+/* Color-code para notas */
+.disciplina-nota { font-weight: 600; padding: 4px 12px; border-radius: 20px; background: white; transition: all 0.2s; }
+
+/* Nota acima de 7.0 - Verde (aprovado) */
+.disciplina-nota.nota-aprovado { background: #28a745; color: white; }
+
+/* Nota entre 6.0 e 6.9 - Amarelo (atenção) */
+.disciplina-nota.nota-atencao { background: #ffc107; color: #212529; }
+
+/* Nota entre 5.0 e 5.9 - Laranja (risco) */
+.disciplina-nota.nota-risco { background: #fd7e14; color: white; }
+
+/* Nota abaixo de 5.0 - Vermelho (crítico) */
+.disciplina-nota.nota-critico { background: #dc3545; color: white; }
+
+/* Nota sem valor (None) - Cinza */
+.disciplina-nota.nota-indisponivel { background: #6c757d; color: white; }
+
+/* Animação suave para as notas */
+.disciplina-item { transition: all 0.2s ease; }
+
+.disciplina-item:hover { transform: translateX(5px); }
+
+.notas-tabela { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+
+.notas-tabela th { background: #f8f9fa; padding: 12px 8px; text-align: center; font-weight: 600; color: #495057; border-bottom: 2px solid #e9ecef; position: sticky; top: 0; }
+
+.notas-tabela td { padding: 10px 8px; border-bottom: 1px solid #e9ecef; text-align: center; }
+
+.notas-tabela tr:hover { background: #f8f9fa; }
+
+.disciplina-nome-tabela { text-align: left !important; font-weight: 500; color: #212529; }
+
+.disciplina-nome-tabela i { color: var(--primary); margin-right: 8px; }
+
+.nota-cell { text-align: center; }
+
+.nota-valor { display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 0.85rem; min-width: 50px; }
+
+.media-cell { text-align: center; font-weight: 600; }
+
+.media-valor { display: inline-block; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; min-width: 50px; }
+
+.nota-aprovado, .media-valor.nota-aprovado { background: #28a745; color: white; }
+
+.nota-atencao, .media-valor.nota-atencao { background: #ffc107; color: #212529; }
+
+.nota-risco, .media-valor.nota-risco { background: #fd7e14; color: white; }
+
+.nota-critico, .media-valor.nota-critico { background: #dc3545; color: white; }
+
+.nota-indisponivel, .media-valor.nota-indisponivel { background: #6c757d; color: white; }
+
+.situacao-cell { text-align: center; }
+
+.situacao-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+
+.situacao-aprovado { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+
+.situacao-risco { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+
+.disciplina-abaixo { background: rgba(255, 193, 7, 0.05); }
+
+.disciplina-abaixo:hover {
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.sem-dados-tabela { text-align: center !important; padding: 40px !important; color: #6c757d; }
+
+/* Responsividade da tabela */
+@media (max-width: 768px) {
+    .notas-tabela { font-size: 0.75rem; }
+    
+    .notas-tabela th,
+    .notas-tabela td { padding: 8px 4px; }
+    
+    .nota-valor, .media-valor { padding: 2px 6px; min-width: 40px; font-size: 0.75rem; }
+    
+    .situacao-badge { padding: 2px 8px; font-size: 0.7rem; }
+}
+</style>
+
+<script>
+
+    let indiceAtual = 0;
+    const totalSlides = {{ alunos|length }};
+    let alunosData = {{ alunos|tojson }};
+    let ultimaAtualizacao = null;
+    let editando = false;
+    let timeoutEdit = null;
+    let modelosEncaminhamentos = [];
+    let selecoesOcorrencias = {};
+    
+    // Variáveis de permissão (vindas do backend)
+    const podeEditar = {{ 'true' if pode_editar else 'false' }};
+    const conselhoAberto = {{ 'true' if conselho.status == 'aberto' else 'false' }};
+    const podeSelecionarOcorrencias = podeEditar && conselhoAberto;
+    
+    //console.log("=== VARIÁVEIS DE PERMISSÃO ===");
+    //console.log("podeEditar:", podeEditar);
+    //console.log("conselhoAberto:", conselhoAberto);
+    //console.log("podeSelecionarOcorrencias:", podeSelecionarOcorrencias);
+    //console.log("totalSlides:", totalSlides);
+    
+
+    function mudarAluno(novoIndice) {
+        //console.log(`mudarAluno chamado para índice ${novoIndice}`);
+        
+        if (novoIndice < 0 || novoIndice >= totalSlides) {
+            console.error(`Índice inválido: ${novoIndice}`);
+            return;
+        }
+        
+        // Esconde todos os slides
+        document.querySelectorAll('.slide-item').forEach(slide => {
+            slide.classList.remove('active');
+            slide.style.display = 'none';
+        });
+        
+        // Desativa todas as thumbnails
+        document.querySelectorAll('.thumbnail-item').forEach(thumb => {
+            thumb.classList.remove('active');
+        });
+        
+        // Mostra o slide selecionado
+        const slideAtivo = document.getElementById(`slide-${novoIndice}`);
+        if (slideAtivo) {
+            slideAtivo.classList.add('active');
+            slideAtivo.style.display = 'block';
+            //console.log(`Slide ${novoIndice} ativado`);
+        } else {
+            console.error(`❌ Slide ${novoIndice} não encontrado!`);
+            return;
+        }
+        
+        // Ativa a thumbnail correspondente
+        const thumbAtivo = document.querySelector(`.thumbnail-item[data-indice="${novoIndice}"]`);
+        if (thumbAtivo) {
+            thumbAtivo.classList.add('active');
+        }
+        
+        indiceAtual = novoIndice;
+        atualizarNavegacao();
+        
+        // Scroll suave para o slide
+        document.querySelector('.slide-principal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    function navegar(direcao) {
+        //console.log(`navegar: ${direcao}, indiceAtual: ${indiceAtual}`);
+        if (direcao === 'prev' && indiceAtual > 0) {
+            mudarAluno(indiceAtual - 1);
+        } else if (direcao === 'next' && indiceAtual < totalSlides - 1) {
+            mudarAluno(indiceAtual + 1);
+        }
+    }
+    
+    function atualizarNavegacao() {
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        if (btnPrev) btnPrev.disabled = indiceAtual === 0;
+        if (btnNext) btnNext.disabled = indiceAtual === totalSlides - 1;
+    }
+    
+
+    function getNotaClasse(nota) {
+        if (nota === null || nota === undefined || isNaN(nota)) return 'nota-indisponivel';
+        if (nota >= 7.0) return 'nota-aprovado';
+        if (nota >= 6.0) return 'nota-atencao';
+        if (nota >= 5.0) return 'nota-risco';
+        return 'nota-critico';
+    }
+    
+    function getNotaDescricao(nota) {
+        if (nota === null || nota === undefined || isNaN(nota)) return 'Sem nota';
+        if (nota >= 7.0) return 'Aprovado';
+        if (nota >= 6.0) return 'Atenção';
+        if (nota >= 5.0) return 'Risco';
+        return 'Crítico';
+    }
+    
+    function atualizarCoresNotas() {
+        document.querySelectorAll('.disciplina-nota').forEach(element => {
+            const notaTexto = element.textContent;
+            const nota = parseFloat(notaTexto);
+            element.classList.remove('nota-aprovado', 'nota-atencao', 'nota-risco', 'nota-critico', 'nota-indisponivel');
+            element.classList.add(getNotaClasse(nota));
+            element.setAttribute('title', `${notaTexto} - ${getNotaDescricao(nota)}`);
+        });
+    }
+    
+
+    function salvarAluno(alunoId) {
+        const parecer = document.querySelector(`textarea[data-aluno-id="${alunoId}"][data-campo="parecer"]`);
+        const encaminhamentos = document.querySelector(`textarea[data-aluno-id="${alunoId}"][data-campo="encaminhamentos"]`);
+        
+        const parecerValue = parecer ? parecer.value : '';
+        const encaminhamentosValue = encaminhamentos ? encaminhamentos.value : '';
+        
+        let statusSelect = document.querySelector(`select.status-select[data-aluno-id="${alunoId}"]`);
+        if (!statusSelect) statusSelect = document.getElementById(`status-select-${alunoId}`);
+        if (!statusSelect) statusSelect = document.querySelector(`select[name="status_${alunoId}"]`);
+        
+        let status = 'pendente';
+        if (statusSelect) {
+            status = statusSelect.value;
+        } else {
+            mostrarFeedbackErro(`Select não encontrado para aluno ${alunoId}`, alunoId);
+            return;
+        }
+        
+        const btn = document.querySelector(`button[onclick*="salvarAluno(${alunoId})"]`);
+        if (!btn) {
+            console.error(`Botão não encontrado para aluno ${alunoId}`);
+            return;
+        }
+        
+        const textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+        
+        fetch(`/conselhos/{{ conselho.id }}/aluno/${alunoId}/atualizar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                parecer: parecerValue,
+                encaminhamentos: encaminhamentosValue,
+                status: status
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById(`status-badge-${alunoId}`);
+                if (badge) {
+                    if (status === 'pendente') {
+                        badge.className = 'badge status-pendente';
+                        badge.innerHTML = '<i class="fas fa-clock"></i> Pendente';
+                    } else if (status === 'aprovado') {
+                        badge.className = 'badge status-aprovado';
+                        badge.innerHTML = '<i class="fas fa-check-circle"></i> Aprovado';
+                    } else if (status === 'reprovado') {
+                        badge.className = 'badge status-reprovado';
+                        badge.innerHTML = '<i class="fas fa-times-circle"></i> Reprovado';
+                    }
+                }
+                
+                const thumb = document.querySelector(`.thumbnail-item[data-indice="${indiceAtual}"] .thumbnail-status`);
+                if (thumb) thumb.className = `thumbnail-status ${status}`;
+                
+                atualizarEstatisticas();
+                
+                btn.innerHTML = '<i class="fas fa-check"></i>';
+                setTimeout(() => {
+                    btn.innerHTML = textoOriginal;
+                    btn.disabled = false;
+                }, 1500);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            btn.innerHTML = '<i class="fas fa-times"></i>';
+            setTimeout(() => {
+                btn.innerHTML = textoOriginal;
+                btn.disabled = false;
+            }, 1500);
+            mostrarFeedbackErro('Erro ao salvar: ' + error.message, alunoId);
+        });
+    }
+    
+    function autoSave(alunoId) {
+        if (window.autoSaveTimeout) clearTimeout(window.autoSaveTimeout);
+        window.autoSaveTimeout = setTimeout(() => salvarAluno(alunoId), 1000);
+    }
+    
+    function mostrarFeedbackErro(mensagem, alunoId) {
+        const btn = document.querySelector(`button[onclick*="salvarAluno(${alunoId})"]`);
+        if (!btn) return;
+        
+        const tooltip = document.createElement('div');
+        tooltip.textContent = mensagem;
+        tooltip.style.cssText = 'position:absolute; background:#dc3545; color:white; padding:5px 10px; border-radius:5px; font-size:12px; z-index:1000;';
+        
+        const rect = btn.getBoundingClientRect();
+        tooltip.style.top = (rect.top - 30) + 'px';
+        tooltip.style.left = rect.left + 'px';
+        
+        document.body.appendChild(tooltip);
+        setTimeout(() => tooltip.remove(), 3000);
+    }
+    
+
+    function inicializarSelecoes() {
+        //console.log("Inicializando seleções de ocorrências...");
+        
+        const dadosAlunos = {{ alunos|tojson }};
+        
+        dadosAlunos.forEach(aluno => {
+            const ocorrenciasSelecionadas = aluno.ocorrencias_selecionadas || [];
+            //console.log(`Aluno ${aluno.id}: ocorrências selecionadas =`, ocorrenciasSelecionadas);
+            selecoesOcorrencias[aluno.id] = ocorrenciasSelecionadas;
+            
+            document.querySelectorAll(`.ocorrencia-checkbox-input[data-aluno-id="${aluno.id}"]`).forEach(checkbox => {
+                const ocorrenciaId = parseInt(checkbox.getAttribute('data-ocorrencia-id'));
+                if (ocorrenciasSelecionadas.includes(ocorrenciaId)) {
+                    checkbox.checked = true;
+                }
+            });
+        });
+        
+        //console.log("Inicialização de seleções concluída!");
+    }
+    
+    function salvarSelecoesOcorrencias(alunoId) {
+        //console.log(`salvarSelecoesOcorrencias chamado para aluno ${alunoId}`);
+        
+        if (!podeSelecionarOcorrencias) {
+            console.warn('Sem permissão para salvar');
+            return;
+        }
+        
+        const selecionadas = selecoesOcorrencias[alunoId] || [];
+        //console.log(`Enviando para o servidor:`, selecionadas);
+        
+        const parecerTextarea = document.querySelector(`textarea[data-aluno-id="${alunoId}"][data-campo="parecer"]`);
+        const encaminhamentosTextarea = document.querySelector(`textarea[data-aluno-id="${alunoId}"][data-campo="encaminhamentos"]`);
+        const statusSelect = document.querySelector(`select.status-select[data-aluno-id="${alunoId}"]`);
+        
+        const dadosParaSalvar = { ocorrencias_selecionadas: selecionadas };
+        
+        if (parecerTextarea) dadosParaSalvar.parecer = parecerTextarea.value;
+        if (encaminhamentosTextarea) dadosParaSalvar.encaminhamentos = encaminhamentosTextarea.value;
+        if (statusSelect) dadosParaSalvar.status = statusSelect.value;
+        
+        //console.log(`Dados completos sendo enviados:`, JSON.stringify(dadosParaSalvar, null, 2));
+        
+        fetch(`/conselhos/{{ conselho.id }}/aluno/${alunoId}/atualizar`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(dadosParaSalvar)
+        })
+        .then(response => {
+            //console.log(`Resposta status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                //console.log(`Ocorrências salvas com sucesso para aluno ${alunoId}`);
+                // Mostra um indicador visual de que salvou
+                mostrarNotificacao('Seleção salva!', 'success');
+            } else {
+                console.error(`Erro ao salvar:`, data);
+                mostrarNotificacao('Erro ao salvar seleções: ' + (data.message || 'Erro desconhecido'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao salvar seleções:', error);
+            mostrarNotificacao('Erro de conexão ao salvar seleções!', 'error');
+        });
+    }
+    
+    function toggleOcorrenciaSelecionada(alunoId, ocorrenciaId, selecionado) {
+        //console.log(`toggleOcorrenciaSelecionada: aluno=${alunoId}, ocorrencia=${ocorrenciaId}, selecionado=${selecionado}`);
+        
+        if (!podeSelecionarOcorrencias) {
+            console.warn('Usuário não tem permissão para selecionar ocorrências');
+            mostrarNotificacao('Você não tem permissão para selecionar ocorrências!', 'error');
+            return;
+        }
+        
+        if (!selecoesOcorrencias[alunoId]) {
+            selecoesOcorrencias[alunoId] = [];
+        }
+        
+        if (selecionado) {
+            if (!selecoesOcorrencias[alunoId].includes(ocorrenciaId)) {
+                selecoesOcorrencias[alunoId].push(ocorrenciaId);
+                //console.log(`Ocorrência ${ocorrenciaId} ADICIONADA. Total: ${selecoesOcorrencias[alunoId].length}`);
+            } else {
+                //console.log(`Ocorrência ${ocorrenciaId} já estava na lista`);
+            }
+        } else {
+            const antes = [...selecoesOcorrencias[alunoId]];
+            selecoesOcorrencias[alunoId] = selecoesOcorrencias[alunoId].filter(id => id !== ocorrenciaId);
+            //console.log(`Ocorrência ${ocorrenciaId} REMOVIDA. Antes: ${antes.length}, Depois: ${selecoesOcorrencias[alunoId].length}`);
+        }
+        
+        //console.log(`Seleções atuais para aluno ${alunoId}:`, selecoesOcorrencias[alunoId]);
+        
+        // Salva imediatamente (sem timeout para debug)
+        salvarSelecoesOcorrencias(alunoId);
+    }
+    
+    function selecionarTodasOcorrencias(alunoId) {
+        if (!podeSelecionarOcorrencias) {
+            mostrarNotificacao('Você não tem permissão para selecionar ocorrências!', 'error');
+            return;
+        }
+        
+        const checkboxes = document.querySelectorAll(`.ocorrencia-checkbox-input[data-aluno-id="${alunoId}"]`);
+        const selecionadas = [];
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+            const ocorrenciaId = parseInt(checkbox.getAttribute('data-ocorrencia-id'));
+            selecionadas.push(ocorrenciaId);
+        });
+        
+        selecoesOcorrencias[alunoId] = selecionadas;
+        salvarSelecoesOcorrencias(alunoId);
+        mostrarNotificacao(`Selecionadas ${selecionadas.length} ocorrências!`, 'success');
+    }
+    
+    function mostrarNotificacao(mensagem, tipo = 'success') {
+        let notif = document.getElementById('notificacao-selecao');
+        if (!notif) {
+            notif = document.createElement('div');
+            notif.id = 'notificacao-selecao';
+            notif.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: ${tipo === 'success' ? '#28a745' : '#dc3545'};
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                z-index: 9999;
+                opacity: 0;
+                transition: opacity 0.3s;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            `;
+            document.body.appendChild(notif);
+        }
+        
+        notif.style.background = tipo === 'success' ? '#28a745' : '#dc3545';
+        notif.innerHTML = `<i class="fas ${tipo === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> ${mensagem}`;
+        notif.style.opacity = '1';
+        setTimeout(() => { notif.style.opacity = '0'; }, 2000);
+    }
+    
+
+    function atualizarStatusBadge(alunoId, novoStatus) {
+        let statusBadge = document.getElementById(`status-badge-${alunoId}`);
+        if (statusBadge) {
+            let icone = '', texto = '';
+            if (novoStatus === 'pendente') {
+                icone = 'fa-clock';
+                texto = ' Pendente';
+                statusBadge.className = 'badge status-pendente';
+            } else if (novoStatus === 'aprovado') {
+                icone = 'fa-check-circle';
+                texto = ' Aprovado';
+                statusBadge.className = 'badge status-aprovado';
+            } else if (novoStatus === 'reprovado') {
+                icone = 'fa-times-circle';
+                texto = ' Reprovado';
+                statusBadge.className = 'badge status-reprovado';
+            }
+            statusBadge.innerHTML = `<i class="fas ${icone}"></i>${texto}`;
+            return true;
+        }
+        return false;
+    }
+    
+    function atualizarInterfaceAluno(aluno) {
+        if (!aluno) return;
+        atualizarStatusBadge(aluno.id, aluno.status);
+        
+        const slideCard = document.querySelector(`#slide-${indiceAtual} .aluno-slide-card`);
+        if (slideCard) {
+            slideCard.className = slideCard.className.replace(/aprovado|reprovado|em-conselho/g, '').trim();
+            if (aluno.status === 'aprovado') slideCard.classList.add('aprovado');
+            else if (aluno.status === 'reprovado') slideCard.classList.add('reprovado');
+            else slideCard.classList.add('em-conselho');
+        }
+        
+        const thumbnail = document.querySelector(`.thumbnail-item[data-indice="${indiceAtual}"] .thumbnail-status`);
+        if (thumbnail) thumbnail.className = `thumbnail-status ${aluno.status}`;
+        
+        const statusSelect = document.querySelector(`select[data-aluno-id="${aluno.id}"]`);
+        if (statusSelect) statusSelect.value = aluno.status;
+        
+        const parecerDiv = document.getElementById(`parecer-visualizacao-${aluno.id}`);
+        if (parecerDiv) parecerDiv.textContent = aluno.parecer || 'Nenhum parecer registrado.';
+        
+        const encDiv = document.getElementById(`encaminhamentos-visualizacao-${aluno.id}`);
+        if (encDiv) encDiv.textContent = aluno.encaminhamentos || 'Nenhum encaminhamento registrado.';
+        
+        mostrarIndicadorAtualizacao();
+    }
+    
+    function atualizarAlunoAtual() {
+        if (!alunosData?.length) return;
+        const alunoAtualId = alunosData[indiceAtual].id;
+        fetch(`/api/conselhos/{{ conselho.id }}/aluno/${alunoAtualId}/dados`)
+            .then(r => r.json())
+            .then(data => { if (data?.success) atualizarInterfaceAluno(data.aluno); })
+            .catch(e => console.error('Erro ao atualizar aluno:', e));
+    }
+    
+    function atualizarEstatisticas() {
+        fetch(`/api/conselhos/{{ conselho.id }}/estatisticas`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.querySelectorAll('.info-item').forEach(item => {
+                        const text = item.innerText;
+                        if (text.includes('Total da Turma')) item.innerHTML = `<i class="fas fa-users"></i> <span>Total da Turma: ${data.total_alunos} alunos</span>`;
+                        else if (text.includes('Em Conselho')) item.innerHTML = `<i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i> <span>Em Conselho: ${data.alunos_com_nota_baixa}</span>`;
+                        else if (text.includes('Decididos')) item.innerHTML = `<i class="fas fa-gavel" style="color: #28a745;"></i> <span>Decididos: ${data.alunos_decididos}</span>`;
+                    });
+                    const progressoFill = document.querySelector('.progresso-fill');
+                    const progressoContador = document.querySelector('.progresso-contador');
+                    if (progressoFill && progressoContador) {
+                        progressoFill.style.width = `${data.progresso}%`;
+                        progressoContador.innerText = `${data.alunos_decididos}/${data.alunos_com_nota_baixa} alunos decididos`;
+                    }
+                }
+            }).catch(e => console.error('Erro ao atualizar estatísticas:', e));
+    }
+    
+    function mostrarIndicadorAtualizacao() {
+        let indicador = document.getElementById('indicador-atualizacao');
+        if (!indicador) {
+            indicador = document.createElement('div');
+            indicador.id = 'indicador-atualizacao';
+            indicador.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Atualizado';
+            indicador.style.cssText = 'position:fixed;bottom:20px;right:20px;background:var(--primary);color:white;padding:8px 16px;border-radius:30px;font-size:0.85rem;box-shadow:var(--shadow-md);z-index:9999;opacity:0;transition:opacity 0.3s;';
+            document.body.appendChild(indicador);
+        }
+        indicador.style.opacity = '1';
+        setTimeout(() => indicador.style.opacity = '0', 2000);
+    }
+    
+    function iniciarAtualizacaoPeriodica() {
+        setInterval(() => { if (document.visibilityState === 'visible') atualizarEstatisticas(); }, 5000);
+        setInterval(() => { if (document.visibilityState === 'visible' && !editando) atualizarAlunoAtual(); }, 3000);
+    }
+    
+
+    function carregarModelosEncaminhamentos() {
+        fetch('/api/modelos-encaminhamentos')
+            .then(response => response.json())
+            .then(modelos => {
+                modelosEncaminhamentos = modelos;
+                document.querySelectorAll('.modelo-select').forEach(select => {
+                    select.innerHTML = '<option value="">-- Selecione um modelo --</option>';
+                    modelos.forEach(modelo => {
+                        const option = document.createElement('option');
+                        option.value = modelo.id;
+                        option.textContent = `${modelo.titulo} (${modelo.categoria})`;
+                        select.appendChild(option);
+                    });
+                    select.addEventListener('change', function() {
+                        const alunoId = this.getAttribute('data-aluno-id');
+                        const modeloId = parseInt(this.value);
+                        const modelo = modelosEncaminhamentos.find(m => m.id === modeloId);
+                        if (modelo) {
+                            const textarea = document.querySelector(`textarea[data-aluno-id="${alunoId}"][data-campo="encaminhamentos"]`);
+                            if (textarea) {
+                                const textoAtual = textarea.value;
+                                const novoTexo = textoAtual ? textoAtual + '\n\n' + modelo.texto : modelo.texto;
+                                textarea.value = novoTexo;
+                                textarea.focus();
+                                autoSave(alunoId);
+                            }
+                        }
+                        this.value = '';
+                    });
+                });
+            })
+            .catch(error => console.error('Erro ao carregar modelos:', error));
+    }
+    
+    function finalizarConselho() {
+        const modal = document.getElementById('finalizarModal');
+        if (modal) { 
+            modal.style.display = 'block'; 
+            modal.classList.add('show'); 
+            document.body.style.overflow = 'hidden'; 
+            document.body.style.position = 'fixed'; 
+            document.body.style.width = '100%'; 
+        }
+    }
+    
+    function fecharModal() {
+        const modal = document.getElementById('finalizarModal');
+        if (modal) { 
+            modal.style.display = 'none'; 
+            modal.classList.remove('show'); 
+            document.body.style.overflow = ''; 
+            document.body.style.position = ''; 
+            document.body.style.width = ''; 
+            const ta = document.getElementById('observacoesFinais'); 
+            if (ta) ta.value = ''; 
+        }
+    }
+    
+    function confirmarFinalizacao(event) {
+        // Verifica se event foi passado, se não, tenta obter do window
+        if (!event && window.event) {
+            event = window.event;
+        }
+        
+        const observacoes = document.getElementById('observacoesFinais').value;
+        let btn = null;
+        
+        // Tenta encontrar o botão de diferentes formas
+        if (event && event.target) {
+            btn = event.target;
+        } else {
+            btn = document.querySelector('.modal-actions .btn-success:last-child');
+        }
+        
+        if (!btn) {
+            console.error('Botão não encontrado');
+            return;
+        }
+        
+        const textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finalizando...';
+        btn.disabled = true;
+        
+        fetch(`/conselhos/{{ conselho.id }}/finalizar`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ observacoes_gerais: observacoes }) 
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                btn.innerHTML = '<i class="fas fa-check"></i> Finalizado!';
+                btn.style.background = '#28a745';
+                const modalContent = document.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.innerHTML = `<div style="text-align:center;padding:20px;"><i class="fas fa-check-circle" style="font-size:4rem;color:#28a745;margin-bottom:20px;"></i><h3>Conselho Finalizado!</h3><p>O conselho foi finalizado com sucesso.</p><p>Redirecionando...</p></div>`;
+                }
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                throw new Error(data.message || 'Erro ao finalizar');
+            }
+        })
+        .catch(error => { 
+            console.error('Erro:', error); 
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Erro!'; 
+            btn.style.background = '#dc3545'; 
+            setTimeout(() => { 
+                btn.innerHTML = textoOriginal; 
+                btn.style.background = ''; 
+                btn.disabled = false; 
+            }, 2000); 
+        });
+    }
+    
+    function salvarConsideracoes() {
+        const consideracoes = document.getElementById('consideracoesIniciais').value;
+        const btn = document.querySelector('.btn-save-consideracoes');
+        const textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+        btn.disabled = true;
+        
+        fetch(`/conselhos/{{ conselho.id }}/consideracoes`, { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ consideracoes: consideracoes }) 
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
+                btn.style.background = '#28a745';
+                setTimeout(() => { 
+                    btn.innerHTML = textoOriginal; 
+                    btn.style.background = ''; 
+                    btn.disabled = false; 
+                }, 2000);
+            } else throw new Error(data.message);
+        })
+        .catch(error => { 
+            console.error('Erro:', error); 
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Erro!'; 
+            btn.style.background = '#dc3545'; 
+            setTimeout(() => { 
+                btn.innerHTML = textoOriginal; 
+                btn.style.background = ''; 
+                btn.disabled = false; 
+            }, 2000); 
+        });
+    }
+    
+
+    function vincularEventos() {
+        //console.log("Vinculando eventos...");
+        
+        // Botões de navegação
+        const btnPrev = document.getElementById('btnPrev');
+        const btnNext = document.getElementById('btnNext');
+        if (btnPrev) btnPrev.addEventListener('click', () => navegar('prev'));
+        if (btnNext) btnNext.addEventListener('click', () => navegar('next'));
+        
+        // Miniaturas
+        document.querySelectorAll('.thumbnail-item').forEach(thumb => {
+            thumb.addEventListener('click', function() {
+                const indice = parseInt(this.getAttribute('data-indice'));
+                if (!isNaN(indice)) {
+                    mudarAluno(indice);
+                }
+            });
+        });
+        
+        // Botões "Selecionar todas"
+        document.querySelectorAll('.btn-selecionar-todas').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const alunoId = parseInt(this.getAttribute('data-aluno-id'));
+                if (!isNaN(alunoId)) {
+                    selecionarTodasOcorrencias(alunoId);
+                }
+            });
+        });
+        
+        //console.log("Eventos vinculados!");
+    }
+    
+
+    document.addEventListener('DOMContentLoaded', function() {
+        //console.log("Inicializando página do conselho...");
+        //console.log("Total de slides:", totalSlides);
+        
+        atualizarCoresNotas();
+        
+        if (totalSlides > 0) {
+            // Configurar primeiro slide
+            document.querySelectorAll('.slide-item').forEach((slide, i) => {
+                if (i === 0) {
+                    slide.classList.add('active');
+                    slide.style.display = 'block';
+                } else {
+                    slide.classList.remove('active');
+                    slide.style.display = 'none';
+                }
+            });
+            
+            // Configurar primeira thumbnail
+            document.querySelectorAll('.thumbnail-item').forEach((thumb, i) => {
+                if (i === 0) thumb.classList.add('active');
+                else thumb.classList.remove('active');
+            });
+            
+            atualizarNavegacao();
+            iniciarAtualizacaoPeriodica();
+            carregarModelosEncaminhamentos();
+            inicializarSelecoes();
+            vincularEventos();
+            
+            // Observer para atualizar cores
+            const observer = new MutationObserver(() => atualizarCoresNotas());
+            const slidesContainer = document.querySelector('.slides-container');
+            if (slidesContainer) {
+                observer.observe(slidesContainer, { childList: true, subtree: true });
+            }
+            
+            // Teclado
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowLeft') { e.preventDefault(); navegar('prev'); }
+                else if (e.key === 'ArrowRight') { e.preventDefault(); navegar('next'); }
+            });
+            
+            // Detectar edição
+            document.querySelectorAll('textarea[data-aluno-id]').forEach(textarea => {
+                textarea.addEventListener('focus', () => editando = true);
+                textarea.addEventListener('blur', () => {
+                    if (timeoutEdit) clearTimeout(timeoutEdit);
+                    timeoutEdit = setTimeout(() => editando = false, 2000);
+                });
+            });
+            
+            // Desabilitar seleção se sem permissão
+            if (!podeSelecionarOcorrencias) {
+                document.querySelectorAll('.ocorrencia-checkbox-input').forEach(checkbox => {
+                    checkbox.disabled = true;
+                    checkbox.style.opacity = '0.5';
+                    checkbox.style.cursor = 'not-allowed';
+                });
+                document.querySelectorAll('.btn-selecionar-todas').forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.5';
+                    btn.style.cursor = 'not-allowed';
+                });
+            }
+        }
+        
+        //console.log("Inicialização concluída!");
+    });
+    
+    // Eventos globais
+    window.onclick = function(e) { 
+        if (e.target == document.getElementById('finalizarModal')) fecharModal(); 
+    };
+    
+    document.addEventListener('keydown', function(e) { 
+        if (e.key === 'Escape') fecharModal(); 
+    });
+    </script>
+{% endblock %}

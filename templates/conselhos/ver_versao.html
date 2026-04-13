@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Versão {{ versao.versao }} - SIGEC{% endblock %}
+
+{% block page_title %}Versão {{ versao.versao }} - {{ conselho.turma.nome }}{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('ver_versoes_conselho', id=conselho.id) }}" class="btn btn-outline">
+    <i class="fas fa-arrow-left"></i> Voltar para Histórico
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="versao-view-container">
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3><i class="fas fa-info-circle"></i> Informações da Versão</h3>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div><strong>Versão:</strong> {{ versao.versao }}</div>
+                <div><strong>Data:</strong> {{ versao.data_reabertura.strftime('%d/%m/%Y %H:%M') }}</div>
+                <div><strong>Reaberto por:</strong> {{ versao.reabridor.nome }}</div>
+            </div>
+            <div class="motivo-box">
+                <strong>Motivo da Reabertura:</strong>
+                <p>{{ versao.motivo_reabertura }}</p>
+            </div>
+        </div>
+    </div>
+    
+    {% if versao.consideracoes_iniciais %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3><i class="fas fa-clipboard-list"></i> Considerações Iniciais</h3>
+        </div>
+        <div class="card-body">
+            <div class="texto-visualizacao">{{ versao.consideracoes_iniciais }}</div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-users"></i> Decisões</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Decisão</th>
+                            <th>Parecer</th>
+                            <th>Encaminhamentos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for aluno in alunos %}
+                        <tr>
+                            <td><strong>{{ aluno.nome }}</strong><br><small>{{ aluno.matricula }}</small></td>
+                            <td>
+                                <span class="badge badge-{{ aluno.status }}">
+                                    {% if aluno.status == 'aprovado' %}✅ Aprovado
+                                    {% elif aluno.status == 'reprovado' %}❌ Reprovado
+                                    {% else %}⏳ Pendente{% endif %}
+                                </span>
+                            </td>
+                            <td>{{ aluno.parecer or '-' }}</td>
+                            <td>{{ aluno.encaminhamentos or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    {% if versao.observacoes_gerais %}
+    <div class="card mt-4">
+        <div class="card-header">
+            <h3><i class="fas fa-sticky-note"></i> Observações Gerais</h3>
+        </div>
+        <div class="card-body">
+            <div class="texto-visualizacao">{{ versao.observacoes_gerais }}</div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.versao-view-container {
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.motivo-box {
+    background: #fff3cd;
+    padding: 15px;
+    border-radius: var(--radius-md);
+    margin-top: 15px;
+}
+
+.motivo-box p {
+    margin: 8px 0 0 0;
+    color: #856404;
+}
+
+.texto-visualizacao {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: var(--radius-md);
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.badge-aprovado { background: rgba(40, 167, 69, 0.1); color: #28a745; }
+.badge-reprovado { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+.badge-pendente { background: rgba(255, 193, 7, 0.1); color: #ffc107; }
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #495057;
+}
+
+.table td {
+    padding: 12px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: top;
+}
+
+@media (max-width: 768px) {
+    .versao-view-container {
+        padding: 16px;
+    }
+}
+</style>
+{% endblock %}

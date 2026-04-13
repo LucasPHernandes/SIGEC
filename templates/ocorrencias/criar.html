@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Ocorrência - SIGEC{% endblock %}
+
+{% block page_title %}Nova Ocorrência{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('listar_ocorrencias') }}" class="btn btn-outline">
+    <i class="fas fa-arrow-left"></i> Voltar
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 20px; max-width: 900px; margin: 0 auto;">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-exclamation-triangle"></i> Registrar Nova Ocorrência</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('nova_ocorrencia') }}" enctype="multipart/form-data">
+                <input type="hidden" name="setor_origem_id" value="{{ current_user.setor_id }}">
+
+                <!-- Aluno -->
+                <div class="form-group">
+                    <label class="form-label">Aluno *</label>
+                    <select name="aluno_id" class="form-control" required>
+                        <option value="">Selecione um aluno...</option>
+                        {% for aluno in alunos %}
+                        <option value="{{ aluno.id }}" {% if request.args.get('aluno_id')|int == aluno.id %}selected{% endif %}>
+                            {{ aluno.nome }} - {{ aluno.matricula }} ({{ aluno.turma.nome if aluno.turma else 'Sem turma' }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Título -->
+                <div class="form-group">
+                    <label class="form-label">Título *</label>
+                    <input type="text" name="titulo" class="form-control" placeholder="Ex: Problema de comportamento em sala de aula" required>
+                </div>
+
+                <!-- Tipo e Prioridade -->
+                <div class="grid grid-2" style="gap: 20px;">
+                    <div class="form-group">
+                        <label class="form-label">Tipo de Ocorrência *</label>
+                        <select name="tipo_id" class="form-control" required>
+                            <option value="">Selecione o tipo...</option>
+                            {% for tipo in tipos %}
+                            <option value="{{ tipo.id }}">{{ tipo.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Prioridade *</label>
+                        <select name="prioridade" class="form-control" required>
+                            <option value="baixa">Baixa</option>
+                            <option value="media" selected>Média</option>
+                            <option value="alta">Alta</option>
+                            <option value="urgente">Urgente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Setor Destino -->
+                {% if not current_user.setor_id %}
+                    <div class="alert alert-danger">
+                        Você não está vinculado a nenhum setor. Entre em contato com o administrador.
+                    </div>
+                {% endif %}
+
+                <div class="form-group">
+                    <label class="form-label">Encaminhar para *</label>
+                    <select name="setor_destino_id" class="form-control" required>
+                        <option value="">Selecione o setor de destino...</option>
+                        {% for setor in setores %}
+                        <option value="{{ setor.id }}">{{ setor.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Descrição -->
+                <div class="form-group">
+                    <label class="form-label">Descrição *</label>
+                    <textarea name="descricao" class="form-control" rows="6" placeholder="Descreva detalhadamente a ocorrência..." required></textarea>
+                </div>
+
+                <!-- Anexos -->
+                <div class="form-group">
+                    <label class="form-label">Anexos (opcional)</label>
+                    <input type="file" name="anexos" class="form-control" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    <small style="color: #666;">Arquivos permitidos: PDF, DOC, DOCX, JPG, PNG (max 16MB)</small>
+                </div>
+
+                <!-- Botões -->
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 30px;">
+                    <!-- Setor de origem (hidden, pega do usuário logado) -->
+<input type="hidden" name="setor_origem_id" value="{{ current_user.setor_id }}">
+                    <a href="{{ url_for('listar_ocorrencias') }}" class="btn btn-outline btn-lg">Cancelar</a>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> Registrar Ocorrência
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dicas de preenchimento -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h4><i class="fas fa-lightbulb"></i> Dicas para registro</h4>
+        </div>
+        <div class="card-body">
+            <ul style="margin: 0; padding-left: 20px;">
+                <li>Seja claro e objetivo no título</li>
+                <li>Descreva os fatos de forma detalhada na descrição</li>
+                <li>Inclua datas, horários e locais quando relevante</li>
+                <li>Anexe documentos que comprovem ou complementem a ocorrência</li>
+                <li>Selecione corretamente o setor de destino para agilizar o atendimento</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+.mt-4 {
+    margin-top: 20px;
+}
+</style>
+{% endblock %}

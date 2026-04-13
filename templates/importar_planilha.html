@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Planilha - SIGEC{% endblock %}
+
+{% block page_title %}Importar Dados da Planilha{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-file-excel"></i> Importar Planilha Subsídio</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> Instruções:</h5>
+                        <ul>
+                            <li>Envie o arquivo <strong>Subsídio.xlsx</strong> completo</li>
+                            <li>O sistema importará automaticamente:
+                                <ul>
+                                    <li>Todas as turmas (T11, T12, T13, etc.)</li>
+                                    <li>Todos os alunos com suas matrículas</li>
+                                    <li>Todas as disciplinas com suas siglas</li>
+                                    <li>As notas finais de cada disciplina</li>
+                                </ul>
+                            </li>
+                            <li>Alunos já existentes serão atualizados</li>
+                            <li>Processo pode levar alguns minutos</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="arquivo" class="form-label">Selecione o arquivo Excel</label>
+                            <input type="file" class="form-control" id="arquivo" name="arquivo" 
+                                   accept=".xlsx,.xls" required>
+                            <div class="form-text">Formatos aceitos: .xlsx, .xls</div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Atenção:</strong> Certifique-se de que a planilha está no formato original do Subsídio.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-upload"></i> Iniciar Importação
+                            </button>
+                            <a href="{{ url_for('listar_alunos') }}" class="btn btn-outline-secondary">
+                                Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            
+        </div>
+    </div>
+</div>
+
+<style>
+.container {
+    padding: 24px 32px;
+}
+
+.card {
+    margin-bottom: 24px;
+    border: none;
+    box-shadow: var(--shadow-md);
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
+}
+
+.card-header h3, .card-header h4 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.card-header h3 i, .card-header h4 i {
+    margin-right: 8px;
+}
+
+.alert {
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+}
+
+.alert-info {
+    background: rgba(0, 66, 12, 0.1);
+    border: 1px solid var(--primary);
+    color: var(--primary-dark);
+}
+
+.alert-warning {
+    background: rgba(255, 193, 7, 0.1);
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.form-control {
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    transition: all var(--transition-fast);
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1);
+}
+
+.form-text {
+    margin-top: 8px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border: none;
+    padding: 12px 24px;
+    font-weight: 500;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.border {
+    border: 2px solid #e9ecef !important;
+    transition: all var(--transition-fast);
+}
+
+.border:hover {
+    border-color: var(--primary) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 16px;
+    }
+    
+    .col-md-4 {
+        margin-bottom: 16px;
+    }
+}
+</style>
+{% endblock %}

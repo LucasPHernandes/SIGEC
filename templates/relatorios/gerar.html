@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios - SIGEC{% endblock %}
+
+{% block page_title %}Gerar Relatórios{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 20px; max-width: 600px; margin: 0 auto;">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-file-alt"></i> Selecione o Relatório</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('relatorios') }}">
+                <div class="form-group">
+                    <label class="form-label">Tipo de Relatório</label>
+                    <select name="tipo" class="form-control" required>
+                        <option value="">Selecione...</option>
+                        <option value="ocorrencias">Ocorrências</option>
+                        <option value="alunos">Alunos</option>
+                        <option value="estatisticas">Estatísticas</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Período</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="date" name="data_inicio" class="form-control" placeholder="Data inicial">
+                        <input type="date" name="data_fim" class="form-control" placeholder="Data final">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Formato</label>
+                    <select name="formato" class="form-control" required>
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-download"></i> Gerar Relatório
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

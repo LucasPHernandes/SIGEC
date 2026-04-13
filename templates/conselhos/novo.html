@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Conselho - IFFar{% endblock %}
+
+{% block page_title %}Novo Conselho de Classe{% endblock %}
+
+{% block content %}
+<div class="novo-conselho-container">
+    <div class="card form-card">
+        <div class="card-header">
+            <h3><i class="fas fa-clipboard-list"></i> Configurar Conselho</h3>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="conselho-form">
+                <!-- Linha 1: Turma e Ano -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-users"></i> Turma
+                        </label>
+                        <select name="turma_id" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for turma in turmas %}
+                            <option value="{{ turma.id }}">{{ turma.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-calendar"></i> Ano
+                        </label>
+                        <select name="ano" class="form-control" required>
+                            <option value="">Selecione...</option>
+                            {% for ano in anos %}
+                            <option value="{{ ano }}" {% if ano == current_year %}selected{% endif %}>{{ ano }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Linha 2: Semestre (compacto) -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-layer-group"></i> Semestre
+                        </label>
+                        <div class="semestre-options">
+                            <label class="semestre-option">
+                                <input type="radio" name="semestre" value="1" class="semestre-radio" checked>
+                                <span class="semestre-card">
+                                    <i class="fas fa-sun"></i>
+                                    <span>1° Semestre</span>
+                                </span>
+                            </label>
+                            <label class="semestre-option">
+                                <input type="radio" name="semestre" value="2" class="semestre-radio">
+                                <span class="semestre-card">
+                                    <i class="fas fa-cloud-sun"></i>
+                                    <span>2° Semestre</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tipos de Conselho em Grid -->
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-tag"></i> Tipo de Conselho
+                    </label>
+                    <div class="tipos-grid">
+                        {% for tipo in tipos_conselho %}
+                        <label class="tipo-option">
+                            <input type="radio" name="tipo" value="{{ tipo.id }}" 
+                                   data-semestre="{{ tipo.semestre }}" class="tipo-radio" required>
+                            <div class="tipo-card" style="border-color: {{ tipo.cor }};">
+                                <div class="tipo-icon" style="background: {{ tipo.cor }};">
+                                    <i class="fas fa-{{ tipo.icone }}"></i>
+                                </div>
+                                <div class="tipo-info">
+                                    <h4>{{ tipo.nome }}</h4>
+                                    <small>{{ tipo.semestre }}° Semestre</small>
+                                </div>
+                            </div>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Botões de ação -->
+                <div class="form-actions">
+                    <a href="{{ url_for('listar_conselhos') }}" class="btn btn-outline">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Criar Conselho
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.novo-conselho-container {
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.form-card {
+    border: none;
+    box-shadow: var(--shadow-md);
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.card-header i {
+    margin-right: 8px;
+}
+
+.conselho-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-label i {
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: white;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1);
+}
+
+/* Opções de Semestre */
+.semestre-options {
+    display: flex;
+    gap: 12px;
+}
+
+.semestre-option {
+    flex: 1;
+    cursor: pointer;
+}
+
+.semestre-radio {
+    display: none;
+}
+
+.semestre-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+}
+
+.semestre-radio:checked + .semestre-card {
+    border-color: var(--primary);
+    background: rgba(0, 66, 12, 0.05);
+    transform: scale(1.02);
+}
+
+.semestre-card i {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+/* Grid de Tipos */
+.tipos-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.tipo-option {
+    cursor: pointer;
+}
+
+.tipo-radio {
+    display: none;
+}
+
+.tipo-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-md);
+    transition: all 0.2s;
+}
+
+.tipo-radio:checked + .tipo-card {
+    border-width: 2px;
+    background: rgba(0, 66, 12, 0.05);
+    transform: scale(1.02);
+}
+
+.tipo-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+}
+
+.tipo-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.tipo-info small {
+    color: #6c757d;
+    font-size: 0.8rem;
+}
+
+/* Botões de ação */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn {
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-outline {
+    background: white;
+    border: 2px solid #e9ecef;
+    color: #495057;
+}
+
+.btn-outline:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .novo-conselho-container {
+        padding: 16px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .tipos-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .semestre-options {
+        flex-direction: column;
+    }
+    
+    .form-actions {
+        flex-direction: column-reverse;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .tipo-card {
+        padding: 12px;
+    }
+    
+    .tipo-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    .tipo-info h4 {
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoRadios = document.querySelectorAll('.tipo-radio');
+    const semestreRadios = document.querySelectorAll('.semestre-radio');
+    
+    // Auto-select semestre based on tipo
+    tipoRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const semestre = this.dataset.semestre;
+            semestreRadios.forEach(sr => {
+                if (sr.value == semestre) {
+                    sr.checked = true;
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

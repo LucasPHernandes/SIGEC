@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Ocorrências - SIGEC{% endblock %}
+
+{% block page_title %}Lista de Ocorrências{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('nova_ocorrencia') }}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> Nova Ocorrência
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid" style="padding: 20px;">
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;">
+                <div style="flex: 1; min-width: 150px;">
+                    <label style="font-size: 0.8rem; margin-bottom: 5px; display: block;">Buscar por ID</label>
+                    <input type="number" 
+                           name="id_busca" 
+                           class="form-control" 
+                           placeholder="Digite o ID da ocorrência"
+                           value="{{ request.args.get('id_busca', '') }}"
+                           style="width: 100%;">
+                </div>
+                
+                <div style="min-width: 150px;">
+                    <label style="font-size: 0.8rem; margin-bottom: 5px; display: block;">Status</label>
+                    <select name="status" class="form-control">
+                        <option value="">Todos status</option>
+                        <option value="aberta" {% if request.args.get('status') == 'aberta' %}selected{% endif %}>Aberta</option>
+                        <option value="em_andamento" {% if request.args.get('status') == 'em_andamento' %}selected{% endif %}>Em Andamento</option>
+                        <option value="resolvida" {% if request.args.get('status') == 'resolvida' %}selected{% endif %}>Resolvida</option>
+                    </select>
+                </div>
+                
+                <div style="min-width: 200px;">
+                    <label style="font-size: 0.8rem; margin-bottom: 5px; display: block;">Setor</label>
+                    <select name="setor" class="form-control">
+                        <option value="">Todos setores</option>
+                        {% for setor in setores %}
+                        <option value="{{ setor.id }}" {% if request.args.get('setor')|int == setor.id %}selected{% endif %}>
+                            {{ setor.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div style="min-width: 200px;">
+                    <label style="font-size: 0.8rem; margin-bottom: 5px; display: block;">Aluno</label>
+                    <select name="aluno" class="form-control">
+                        <option value="">Todos alunos</option>
+                        {% for aluno in alunos %}
+                        <option value="{{ aluno.id }}" {% if request.args.get('aluno')|int == aluno.id %}selected{% endif %}>
+                            {{ aluno.nome }} ({{ aluno.matricula }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                    <a href="{{ url_for('listar_ocorrencias') }}" class="btn btn-secondary">
+                        <i class="fas fa-undo"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    
+    <!-- Lista de Ocorrências -->
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Título</th>
+                        <th>Aluno</th>
+                        <th>Tipo</th>
+                        <th>Status</th>
+                        <th>Prioridade</th>
+                        <th>Data</th>
+                        <th>Prazo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ocorrencia in ocorrencias.items %}
+                    <tr class="{% if request.args.get('id_busca')|int == ocorrencia.id %}table-primary{% endif %}">
+                        <td>
+                            <strong>#{{ ocorrencia.id }}</strong>
+                            {% if request.args.get('id_busca')|int == ocorrencia.id %}
+                            <span class="badge badge-info">Resultado da busca</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ ocorrencia.titulo }}</td>
+                        <td>
+                            <a href="{{ url_for('ver_aluno', id=ocorrencia.aluno.id) }}">
+                                {{ ocorrencia.aluno.nome }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge" style="background: {{ ocorrencia.tipo.cor }}; color: white;">
+                                {{ ocorrencia.tipo.nome }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ ocorrencia.status }}">
+                                {% if ocorrencia.status == 'aberta' %}
+                                    <i class="fas fa-circle" style="font-size: 0.7rem;"></i> Aberta
+                                {% elif ocorrencia.status == 'em_andamento' %}
+                                    <i class="fas fa-spinner"></i> Em Andamento
+                                {% else %}
+                                    <i class="fas fa-check"></i> Resolvida
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ ocorrencia.prioridade }}">
+                                {% if ocorrencia.prioridade == 'baixa' %}
+                                    <i class="fas fa-arrow-down"></i> Baixa
+                                {% elif ocorrencia.prioridade == 'media' %}
+                                    <i class="fas fa-minus"></i> Média
+                                {% elif ocorrencia.prioridade == 'alta' %}
+                                    <i class="fas fa-arrow-up"></i> Alta
+                                {% else %}
+                                    <i class="fas fa-exclamation-triangle"></i> Urgente
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ ocorrencia.data_abertura.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            {% if ocorrencia.data_prazo %}
+                                {% if ocorrencia.esta_atrasada() %}
+                                <span style="color: #dc3545;">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    {{ ocorrencia.data_prazo.strftime('%d/%m/%Y') }}
+                                </span>
+                                {% else %}
+                                <span style="color: #28a745;">
+                                    <i class="fas fa-calendar-check"></i>
+                                    {{ ocorrencia.data_prazo.strftime('%d/%m/%Y') }}
+                                </span>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('ver_ocorrencia', id=ocorrencia.id) }}" class="btn btn-sm btn-info" title="Ver detalhes">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if current_user.role in ['admin', 'direcao'] %}
+                            <button class="btn btn-sm btn-danger" onclick="copiarId({{ ocorrencia.id }})" title="Copiar ID">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center p-4">
+                            <i class="fas fa-exclamation-triangle fa-3x mb-3" style="color: #ccc;"></i>
+                            <p>Nenhuma ocorrência encontrada</p>
+                            {% if request.args.get('id_busca') %}
+                            <p class="text-muted">Nenhuma ocorrência encontrada com o ID {{ request.args.get('id_busca') }}</p>
+                            <a href="{{ url_for('listar_ocorrencias') }}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-undo"></i> Limpar busca
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Paginação -->
+        {% if ocorrencias.pages > 1 %}
+        <div class="card-footer" style="display: flex; justify-content: center; gap: 5px; flex-wrap: wrap;">
+            {% if ocorrencias.has_prev %}
+            <a href="{{ url_for('listar_ocorrencias', page=1, status=request.args.get('status'), setor=request.args.get('setor'), aluno=request.args.get('aluno'), id_busca=request.args.get('id_busca')) }}" 
+               class="btn btn-sm btn-outline">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="{{ url_for('listar_ocorrencias', page=ocorrencias.prev_num, status=request.args.get('status'), setor=request.args.get('setor'), aluno=request.args.get('aluno'), id_busca=request.args.get('id_busca')) }}" 
+               class="btn btn-sm btn-outline">
+                <i class="fas fa-angle-left"></i>
+            </a>
+            {% endif %}
+            
+            {% for page_num in ocorrencias.iter_pages(left_edge=2, left_current=2, right_current=3, right_edge=2) %}
+                {% if page_num %}
+                    <a href="{{ url_for('listar_ocorrencias', page=page_num, status=request.args.get('status'), setor=request.args.get('setor'), aluno=request.args.get('aluno'), id_busca=request.args.get('id_busca')) }}" 
+                       class="btn btn-sm {% if page_num == ocorrencias.page %}btn-primary{% else %}btn-outline{% endif %}">
+                        {{ page_num }}
+                    </a>
+                {% else %}
+                    <span class="btn btn-sm btn-outline disabled">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if ocorrencias.has_next %}
+            <a href="{{ url_for('listar_ocorrencias', page=ocorrencias.next_num, status=request.args.get('status'), setor=request.args.get('setor'), aluno=request.args.get('aluno'), id_busca=request.args.get('id_busca')) }}" 
+               class="btn btn-sm btn-outline">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="{{ url_for('listar_ocorrencias', page=ocorrencias.pages, status=request.args.get('status'), setor=request.args.get('setor'), aluno=request.args.get('aluno'), id_busca=request.args.get('id_busca')) }}" 
+               class="btn btn-sm btn-outline">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Informações adicionais -->
+    <div class="mt-3 text-muted text-center" style="font-size: 0.8rem;">
+        <i class="fas fa-info-circle"></i> 
+        Mostrando {{ ocorrencias.items|length }} de {{ ocorrencias.total }} ocorrências
+        {% if request.args.get('id_busca') %}
+            | Buscando por ID: {{ request.args.get('id_busca') }}
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function buscarPorId() {
+    const id = prompt('Digite o ID da ocorrência que deseja buscar:');
+    if (id && !isNaN(id) && parseInt(id) > 0) {
+        window.location.href = "{{ url_for('listar_ocorrencias') }}?id_busca=" + id;
+    } else if (id) {
+        alert('Por favor, digite um número de ID válido.');
+    }
+}
+
+function buscarRapida() {
+    const id = document.getElementById('buscaRapidaId').value;
+    if (id && !isNaN(id) && parseInt(id) > 0) {
+        window.location.href = "{{ url_for('listar_ocorrencias') }}?id_busca=" + id;
+    } else if (id) {
+        alert('Por favor, digite um número de ID válido.');
+    }
+}
+
+function copiarId(id) {
+    navigator.clipboard.writeText(id).then(function() {
+        // Cria uma notificação temporária
+        const notif = document.createElement('div');
+        notif.textContent = 'ID #' + id + ' copiado!';
+        notif.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#28a745;color:white;padding:10px 20px;border-radius:5px;z-index:9999;animation:fadeOut 2s ease-out;';
+        document.body.appendChild(notif);
+        setTimeout(() => notif.remove(), 2000);
+    }).catch(function() {
+        alert('Não foi possível copiar o ID. Copie manualmente: ' + id);
+    });
+}
+
+// Adiciona animação de fade
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeOut {
+        0% { opacity: 1; transform: translateY(0); }
+        70% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-20px); }
+    }
+`;
+document.head.appendChild(style);
+
+// Se houver busca por ID, foca no resultado
+document.addEventListener('DOMContentLoaded', function() {
+    const idBusca = {{ request.args.get('id_busca', 'null') }};
+    if (idBusca) {
+        const row = document.querySelector('tr.table-primary');
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Destaca a linha
+            row.style.transition = 'background-color 0.5s';
+            setTimeout(() => {
+                row.style.backgroundColor = '#fff3cd';
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 2000);
+            }, 500);
+        }
+    }
+});
+</script>
+
+<style>
+.table tr:hover {
+    background-color: rgba(0, 66, 12, 0.05);
+    cursor: pointer;
+}
+
+.badge-info {
+    background-color: #17a2b8;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    margin-left: 5px;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #dee2e6;
+    color: #495057;
+}
+
+.btn-outline:hover {
+    background: #f8f9fa;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+</style>
+{% endblock %}

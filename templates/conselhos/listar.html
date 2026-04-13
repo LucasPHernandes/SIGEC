@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}Conselhos de Classe - IFFar{% endblock %}
+
+{% block page_title %}Conselhos de Classe{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px;">
+    {% if pode_criar %}
+    <a href="{{ url_for('novo_conselho') }}" class="btn btn-success">
+        <i class="fas fa-plus"></i> Novo Conselho
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="conselhos-container">
+    <!-- Filtros - Versão Responsiva -->
+    <div class="card filters-card">
+        <div class="card-body">
+            <form method="GET" class="filters-form">
+                <div class="filters-grid">
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-calendar"></i> Ano
+                        </label>
+                        <select name="ano" class="filter-select">
+                            <option value="">Todos</option>
+                            {% for ano in anos_disponiveis %}
+                            <option value="{{ ano }}" {% if request.args.get('ano')|int == ano %}selected{% endif %}>
+                                {{ ano }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-users"></i> Turma
+                        </label>
+                        <select name="turma" class="filter-select">
+                            <option value="">Todas</option>
+                            {% for turma in turmas %}
+                            <option value="{{ turma.id }}" {% if request.args.get('turma')|int == turma.id %}selected{% endif %}>
+                                {{ turma.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label class="filter-label">
+                            <i class="fas fa-tag"></i> Tipo
+                        </label>
+                        <select name="tipo" class="filter-select">
+                            <option value="">Todos</option>
+                            {% for tipo_id, tipo_nome in tipos_conselho %}
+                            <option value="{{ tipo_id }}" {% if request.args.get('tipo') == tipo_id %}selected{% endif %}>
+                                {{ tipo_nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group filter-actions">
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Cards de Conselhos (Versão Mobile) -->
+    <div class="conselhos-mobile">
+        {% for conselho in conselhos.items %}
+        <div class="conselho-card">
+            <div class="conselho-header">
+                <div class="conselho-title">
+                    <h3>{{ conselho.turma.nome }}</h3>
+                    <span class="conselho-badge {{ conselho.tipo }}">
+                        {% if conselho.tipo == 'parcial1' %}Parcial 1
+                        {% elif conselho.tipo == 'semestral1' %}Semestral 1
+                        {% elif conselho.tipo == 'parcial2' %}Parcial 2
+                        {% elif conselho.tipo == 'semestral2' %}Semestral 2
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="conselho-status">
+                    {% if conselho.status == 'aberto' %}
+                    <span class="status-badge aberto">Aberto</span>
+                    {% else %}
+                    <span class="status-badge finalizado">Finalizado</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="conselho-body">
+                <div class="info-row">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>{{ conselho.ano }} • {{ conselho.semestre }}° Semestre</span>
+                </div>
+                <div class="info-row">
+                    <i class="fas fa-clock"></i>
+                    <span>Início: {{ conselho.data_inicio.strftime('%d/%m/%Y') }}</span>
+                </div>
+                {% if conselho.data_fim %}
+                <div class="info-row">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Fim: {{ conselho.data_fim.strftime('%d/%m/%Y') }}</span>
+                </div>
+                {% endif %}
+                <div class="info-row">
+                    <i class="fas fa-user"></i>
+                    <span>Criado por: {{ conselho.criador.nome if conselho.criador else 'Sistema' }}</span>
+                </div>
+            </div>
+            
+            <div class="conselho-footer">
+                <a href="{{ url_for('ver_conselho', id=conselho.id) }}" class="btn-view">
+                    <i class="fas fa-eye"></i> Ver Detalhes
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-clipboard-list"></i>
+            <p>Nenhum conselho encontrado</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Tabela para Desktop -->
+    <div class="card table-card">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Turma</th>
+                        <th>Período</th>
+                        <th>Tipo</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Status</th>
+                        <th>Criado por</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for conselho in conselhos.items %}
+                    <tr>
+                        <td><strong>{{ conselho.turma.nome }}</strong></td>
+                        <td>{{ conselho.ano }}/{{ conselho.semestre }}°</td>
+                        <td>
+                            <span class="badge {{ conselho.tipo }}">
+                                {% if conselho.tipo == 'parcial1' %}Parcial 1
+                                {% elif conselho.tipo == 'semestral1' %}Semestral 1
+                                {% elif conselho.tipo == 'parcial2' %}Parcial 2
+                                {% elif conselho.tipo == 'semestral2' %}Semestral 2
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ conselho.data_inicio.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ conselho.data_fim.strftime('%d/%m/%Y') if conselho.data_fim else '-' }}</td>
+                        <td>
+                            <span class="badge badge-{{ conselho.status }}">
+                                {% if conselho.status == 'aberto' %}Aberto
+                                {% elif conselho.status == 'finalizado' %}Finalizado
+                                {% else %}Reaberto{% endif %}
+                            </span>
+                            {% if conselho.versao_atual > 1 %}
+                            <small class="text-muted d-block">v{{ conselho.versao_atual }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ conselho.criador.nome if conselho.criador else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('ver_conselho', id=conselho.id) }}" class="btn-icon">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Paginação -->
+    {% if conselhos.pages > 1 %}
+    <div class="pagination-container">
+        <div class="pagination">
+            {% if conselhos.has_prev %}
+            <a href="{{ url_for('listar_conselhos', page=conselhos.prev_num, **request.args) }}" class="page-link">
+                <i class="fas fa-chevron-left"></i>
+            </a>
+            {% endif %}
+            
+            {% for page_num in conselhos.iter_pages() %}
+                {% if page_num %}
+                <a href="{{ url_for('listar_conselhos', page=page_num, **request.args) }}" 
+                   class="page-link {% if page_num == conselhos.page %}active{% endif %}">
+                    {{ page_num }}
+                </a>
+                {% else %}
+                <span class="page-link dots">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if conselhos.has_next %}
+            <a href="{{ url_for('listar_conselhos', page=conselhos.next_num, **request.args) }}" class="page-link">
+                <i class="fas fa-chevron-right"></i>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.conselhos-container {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Cards de Filtro */
+.filters-card {
+    margin-bottom: 24px;
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.filter-label i {
+    color: var(--primary);
+    font-size: 0.875rem;
+}
+
+.filter-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: white;
+}
+
+.filter-select:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1);
+}
+
+.filter-actions {
+    justify-content: flex-end;
+}
+
+.btn-block {
+    width: 100%;
+    padding: 10px;
+    font-size: 0.95rem;
+}
+
+/* Cards Mobile */
+.conselhos-mobile {
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.conselho-card {
+    background: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+.conselho-header {
+    padding: 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.conselho-title h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1rem;
+}
+
+.conselho-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+}
+
+.conselho-badge.parcial1 { background: #17a2b8; }
+.conselho-badge.semestral1 { background: #007bff; }
+.conselho-badge.parcial2 { background: #6f42c1; }
+.conselho-badge.semestral2 { background: #28a745; }
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-aberto {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745!important;
+}
+
+.badge-finalizado {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d!important;
+}
+
+.conselho-body {
+    padding: 16px;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.info-row i {
+    width: 18px;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.conselho-footer {
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn-view {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.btn-view:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    color: white;
+}
+
+/* Tabela Desktop */
+.table-card {
+    border: none;
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    background: #f8f9fa;
+    padding: 16px;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9rem;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    padding: 16px;
+    border-bottom: 1px solid #e9ecef;
+    vertical-align: middle;
+    font-size: 0.95rem;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+}
+
+.badge.parcial1 { background: #17a2b8; }
+.badge.semestral1 { background: #007bff; }
+.badge.parcial2 { background: #6f42c1; }
+.badge.semestral2 { background: #28a745; }
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: var(--primary);
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: rgba(0, 66, 12, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Paginação */
+.pagination-container {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 8px;
+    border-radius: var(--radius-md);
+    background: white;
+    color: #495057;
+    text-decoration: none;
+    font-size: 0.95rem;
+    border: 1px solid #e9ecef;
+    transition: all 0.2s;
+}
+
+.page-link:hover {
+    background: rgba(0, 66, 12, 0.1);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.page-link.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.page-link.dots {
+    border: none;
+    background: transparent;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.empty-state i {
+    font-size: 48px;
+    color: #dee2e6;
+    margin-bottom: 16px;
+}
+
+.empty-state p {
+    color: #6c757d;
+    font-size: 1.1rem;
+}
+
+
+/* Responsividade */
+@media (max-width: 1024px) {
+    .filters-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .conselhos-container {
+        padding: 16px;
+    }
+    
+    .filters-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .filter-actions {
+        margin-top: 4px;
+    }
+    
+    .table-card {
+        display: none;
+    }
+    
+    .conselhos-mobile {
+        display: flex;
+    }
+    
+    .btn-block {
+        padding: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .conselho-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .conselho-status {
+        align-self: flex-start;
+    }
+}
+</style>
+{% endblock %}

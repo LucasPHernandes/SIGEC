@@ -1,0 +1,714 @@
+{% extends "base.html" %}
+
+{% block title %}Conselho {{ conselho.turma.nome }} - IFFar{% endblock %}
+
+{% block page_title %}
+    Conselho {{ conselho.turma.nome }}
+    <small style="font-size: 0.8rem; margin-left: 15px; color: rgba(255,255,255,0.9);">
+        {% if conselho.tipo == 'parcial1' %}Parcial 1
+        {% elif conselho.tipo == 'semestral1' %}Semestral 1
+        {% elif conselho.tipo == 'parcial2' %}Parcial 2
+        {% elif conselho.tipo == 'semestral2' %}Semestral 2
+        {% endif %} - {{ conselho.ano }}
+    </small>
+{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('listar_conselhos') }}" class="btn btn-outline">
+        <i class="fas fa-arrow-left"></i> Voltar
+    </a>
+    {% if conselho.status == 'aberto' %}
+    <button class="btn btn-success" onclick="finalizarConselho()">
+        <i class="fas fa-check"></i> Finalizar Conselho
+    </button>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="conselho-view-container">
+    <!-- Cabeçalho do Conselho -->
+    <div class="conselho-header-card">
+        <div class="conselho-info">
+            <div class="info-item">
+                <i class="fas fa-calendar"></i>
+                <span>Data: {{ conselho.data_inicio.strftime('%d/%m/%Y %H:%M') }}</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-users"></i>
+                <span>Total de Alunos: {{ total_alunos }}</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-exclamation-triangle" style="color: #ffc107;"></i>
+                <span>Em Conselho: {{ alunos_com_nota_baixa }}</span>
+            </div>
+            <div class="info-item">
+                <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                <span>Discutidos: {{ alunos_discutidos }}</span>
+            </div>
+        </div>
+        <div class="conselho-status-badge {{ conselho.status }}">
+            {{ conselho.status|title }}
+        </div>
+    </div>
+
+    <!-- Grid de Alunos -->
+    <div class="alunos-grid">
+        {% for aluno in alunos %}
+        <div class="aluno-card {% if aluno.tem_nota_baixa %}em-conselho{% endif %}" data-aluno-id="{{ aluno.id }}">
+            <!-- Cabeçalho do Card -->
+            <div class="aluno-card-header">
+                <div class="aluno-foto">
+                    {% if aluno.foto %}
+                    <img src="{{ url_for('static', filename=aluno.foto) }}" alt="{{ aluno.nome }}">
+                    {% else %}
+                    <div class="foto-placeholder" style="background: {% if aluno.tem_nota_baixa %}#ffc107{% else %}#00420C{% endif %};">
+                        {{ aluno.nome[:1] }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="aluno-info">
+                    <h4>{{ aluno.nome }}</h4>
+                    <p>{{ aluno.matricula }}</p>
+                </div>
+                <div class="aluno-status">
+                    {% if aluno.tem_nota_baixa %}
+                    <span class="badge badge-warning">Em Conselho</span>
+                    {% endif %}
+                    <span class="status-indicator {{ aluno.status }}"></span>
+                </div>
+            </div>
+
+            <!-- Disciplinas com Notas -->
+            <div class="aluno-notas">
+                <h5>
+                    <i class="fas fa-book"></i> 
+                    Disciplinas 
+                    <small>(notas abaixo de 7.0 em destaque)</small>
+                </h5>
+                <div class="notas-list">
+                    {% for disc in aluno.disciplinas_notas %}
+                    <div class="nota-item {% if disc.abaixo_media %}abaixo-media{% endif %}">
+                        <span class="disciplina-nome" title="{{ disc.disciplina }}">
+                            {{ disc.disciplina[:20] }}{% if disc.disciplina|length > 20 %}...{% endif %}
+                        </span>
+                        <span class="nota-valor">{{ disc.nota }}</span>
+                    </div>
+                    {% else %}
+                    <div class="sem-notas">
+                        <i class="fas fa-info-circle"></i>
+                        Nenhuma nota registrada
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Resumo de Faltas (se disponível) -->
+            {% if aluno.frequencia %}
+            <div class="aluno-frequencia">
+                <h5><i class="fas fa-calendar-times"></i> Frequência</h5>
+                <div class="frequencia-info">
+                    <span>Faltas: {{ aluno.frequencia.faltas }}</span>
+                    <span>Percentual: {{ aluno.frequencia.percentual }}%</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Últimas Ocorrências -->
+            <div class="aluno-ocorrencias">
+                <h5>
+                    <i class="fas fa-exclamation-circle"></i> 
+                    Últimas Ocorrências
+                    <a href="{{ url_for('listar_ocorrencias', aluno=aluno.id) }}" class="btn-ver-todas">
+                        Ver todas
+                    </a>
+                </h5>
+                <div class="ocorrencias-list">
+                    {% for ocorrencia in aluno.ocorrencias %}
+                    <div class="ocorrencia-item">
+                        <div class="ocorrencia-header">
+                            <span class="ocorrencia-tipo" style="background: {{ ocorrencia.tipo.cor }};">
+                                {{ ocorrencia.tipo.nome[:15] }}
+                            </span>
+                            <span class="ocorrencia-data">{{ ocorrencia.data_abertura.strftime('%d/%m') }}</span>
+                        </div>
+                        <p class="ocorrencia-titulo">{{ ocorrencia.titulo }}</p>
+                        <div class="ocorrencia-footer">
+                            <span class="badge badge-{{ ocorrencia.status }}">{{ ocorrencia.status }}</span>
+                            <span class="badge badge-{{ ocorrencia.prioridade }}">{{ ocorrencia.prioridade }}</span>
+                            <a href="{{ url_for('ver_ocorrencia', id=ocorrencia.id) }}" class="btn-ver">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="sem-ocorrencias">
+                        <i class="fas fa-check-circle" style="color: #28a745;"></i>
+                        Sem ocorrências
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Parecer e Encaminhamentos -->
+            <div class="aluno-parecer">
+                <h5><i class="fas fa-comment"></i> Parecer do Conselho</h5>
+                <textarea class="parecer-textarea" 
+                          placeholder="Digite o parecer sobre este aluno..."
+                          data-aluno-id="{{ aluno.id }}"
+                          data-campo="parecer">{{ aluno.parecer or '' }}</textarea>
+                
+                <h5><i class="fas fa-tasks"></i> Encaminhamentos</h5>
+                <textarea class="encaminhamentos-textarea"
+                          placeholder="Digite os encaminhamentos..."
+                          data-aluno-id="{{ aluno.id }}"
+                          data-campo="encaminhamentos">{{ aluno.encaminhamentos or '' }}</textarea>
+                
+                <div class="aluno-actions">
+                    <select class="status-select" data-aluno-id="{{ aluno.id }}">
+                        <option value="pendente" {% if aluno.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                        <option value="discutido" {% if aluno.status == 'discutido' %}selected{% endif %}>Discutido</option>
+                        <option value="resolvido" {% if aluno.status == 'resolvido' %}selected{% endif %}>Resolvido</option>
+                    </select>
+                    <button class="btn-save" onclick="salvarAluno({{ aluno.id }})">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if conselho.status == 'aberto' %}
+    <!-- Modal de Finalização -->
+    <div id="finalizarModal" class="modal">
+        <div class="modal-content">
+            <h3>Finalizar Conselho</h3>
+            <p>Deseja realmente finalizar este conselho?</p>
+            <textarea id="observacoesFinais" class="form-control" 
+                      placeholder="Observações gerais do conselho..." rows="4"></textarea>
+            <div class="modal-actions">
+                <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+                <button class="btn btn-success" onclick="confirmarFinalizacao()">
+                    <i class="fas fa-check"></i> Finalizar
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.conselho-view-container {
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* Cabeçalho do Conselho */
+.conselho-header-card {
+    background: white;
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.conselho-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #495057;
+}
+
+.info-item i {
+    color: var(--primary);
+    width: 20px;
+}
+
+.conselho-status-badge {
+    padding: 6px 16px;
+    border-radius: 30px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.conselho-status-badge.aberto {
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}
+
+.conselho-status-badge.finalizado {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+/* Grid de Alunos */
+.alunos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 24px;
+}
+
+/* Card do Aluno */
+.aluno-card {
+    background: white;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.aluno-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.aluno-card.em-conselho {
+    border-left: 4px solid #ffc107;
+}
+
+/* Cabeçalho do Card */
+.aluno-card-header {
+    padding: 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+
+.aluno-foto {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.aluno-foto img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.foto-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.aluno-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.aluno-info h4 {
+    margin: 0 0 4px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aluno-info p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.aluno-status {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.status-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-indicator.pendente { background: #ffc107; }
+.status-indicator.discutido { background: #17a2b8; }
+.status-indicator.resolvido { background: #28a745; }
+
+/* Notas */
+.aluno-notas {
+    padding: 16px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.aluno-notas h5 {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.aluno-notas h5 small {
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-weight: normal;
+}
+
+.notas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.nota-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 8px;
+    background: #f8f9fa;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.nota-item.abaixo-media {
+    background: rgba(255, 193, 7, 0.1);
+    border-left: 3px solid #ffc107;
+}
+
+.disciplina-nome {
+    color: #495057;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.nota-valor {
+    font-weight: 600;
+    color: #212529;
+    background: white;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+}
+
+/* Frequência */
+.aluno-frequencia {
+    padding: 16px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+}
+
+.aluno-frequencia h5 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.frequencia-info {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+}
+
+/* Ocorrências */
+.aluno-ocorrencias {
+    padding: 16px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.aluno-ocorrencias h5 {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    color: #495057;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.btn-ver-todas {
+    font-size: 0.75rem;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.ocorrencias-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ocorrencia-item {
+    background: #f8f9fa;
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    font-size: 0.8rem;
+}
+
+.ocorrencia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.ocorrencia-tipo {
+    padding: 2px 6px;
+    border-radius: 12px;
+    color: white;
+    font-size: 0.7rem;
+}
+
+.ocorrencia-data {
+    color: #6c757d;
+    font-size: 0.7rem;
+}
+
+.ocorrencia-titulo {
+    margin: 4px 0;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ocorrencia-footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.btn-ver {
+    margin-left: auto;
+    color: var(--primary);
+    text-decoration: none;
+    padding: 2px 6px;
+}
+
+/* Parecer */
+.aluno-parecer {
+    padding: 16px;
+}
+
+.aluno-parecer h5 {
+    margin: 12px 0 8px 0;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.aluno-parecer h5:first-child {
+    margin-top: 0;
+}
+
+.parecer-textarea,
+.encaminhamentos-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 60px;
+    transition: all 0.2s;
+}
+
+.parecer-textarea:focus,
+.encaminhamentos-textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1);
+}
+
+.aluno-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.status-select {
+    flex: 1;
+    padding: 8px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+}
+
+.btn-save {
+    padding: 8px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-save:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    padding: 24px;
+    border-radius: var(--radius-md);
+    max-width: 500px;
+    width: 90%;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+/* Estados vazios */
+.sem-notas,
+.sem-ocorrencias {
+    text-align: center;
+    padding: 12px;
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .conselho-view-container {
+        padding: 16px;
+    }
+    
+    .alunos-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .conselho-header-card {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .conselho-info {
+        flex-direction: column;
+        gap: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .aluno-card-header {
+        flex-wrap: wrap;
+    }
+    
+    .aluno-status {
+        width: 100%;
+        flex-direction: row;
+        justify-content: space-between;
+        margin-top: 8px;
+    }
+}
+</style>
+
+<script>
+function salvarAluno(alunoId) {
+    const parecer = document.querySelector(`textarea[data-aluno-id="${alunoId}"][data-campo="parecer"]`).value;
+    const encaminhamentos = document.querySelector(`textarea[data-aluno-id="${alunoId}"][data-campo="encaminhamentos"]`).value;
+    const status = document.querySelector(`select[data-aluno-id="${alunoId}"]`).value;
+    
+    fetch(`/conselhos/{{ conselho.id }}/aluno/${alunoId}/atualizar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            parecer: parecer,
+            encaminhamentos: encaminhamentos,
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Feedback visual
+            const btn = document.querySelector(`button[onclick="salvarAluno(${alunoId})"]`);
+            btn.innerHTML = '<i class="fas fa-check"></i> Salvo!';
+            btn.style.background = '#28a745';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-save"></i> Salvar';
+                btn.style.background = '';
+            }, 2000);
+        }
+    });
+}
+
+function finalizarConselho() {
+    document.getElementById('finalizarModal').style.display = 'flex';
+}
+
+function fecharModal() {
+    document.getElementById('finalizarModal').style.display = 'none';
+}
+
+function confirmarFinalizacao() {
+    const observacoes = document.getElementById('observacoesFinais').value;
+    
+    fetch(`/conselhos/{{ conselho.id }}/finalizar`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            observacoes_gerais: observacoes
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        }
+    });
+}
+</script>
+{% endblock %}

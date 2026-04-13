@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Login - SIGEC{% endblock %}
+
+{% block public_content %}
+<div class="login-container">
+    <div class="login-card animate-scale-in">
+        <div class="login-header">
+            <img src="{{ url_for('static', filename='images/logo-iffar.png') }}" alt="IFFar" class="login-logo">
+            <h1>SIGEC</h1>
+            <p>Instituto Federal Farroupilha - Frederico Westphalen</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="email" class="form-label">
+                    <i class="fas fa-envelope"></i>
+                    E-mail
+                </label>
+                <input type="email" 
+                       class="form-control" 
+                       id="email" 
+                       name="email" 
+                       required 
+                       data-validate="required email"
+                       placeholder="seu.email@iffar.edu.br">
+            </div>
+            
+            <div class="form-group">
+                <label for="senha" class="form-label">
+                    <i class="fas fa-lock"></i>
+                    Senha
+                </label>
+                <div class="password-field">
+                    <input type="password" 
+                           class="form-control" 
+                           id="senha" 
+                           name="senha" 
+                           required 
+                           data-validate="required min:6"
+                           placeholder="Sua senha">
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <button type="submit" class="btn btn-primary btn-block btn-lg">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Entrar
+                </button>
+            </div>
+            <div class="login-footer login-links">
+                <a href="{{ url_for('recuperar_senha') }}" class="forgot-password">Esqueceu sua senha?</a>
+            </div>
+        </form>
+    </div>
+    
+    <div class="login-background">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+</div>
+
+<style>
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--iffar-green) 0%, var(--iffar-green-light) 100%);
+}
+
+.login-card {
+    background: var(--bg-primary);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    width: 90%;
+    max-width: 400px;
+    padding: var(--spacing-2xl);
+    position: relative;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.login-logo {
+    height: 60px;
+    margin-bottom: var(--spacing-lg);
+}
+
+.login-header h1 {
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.login-header p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+}
+
+.login-form .form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.password-field {
+    position: relative;
+}
+
+.password-toggle {
+    position: absolute;
+    right: var(--spacing-md);
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: var(--spacing-xs);
+}
+
+.password-toggle:hover {
+    color: var(--primary);
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: var(--spacing-lg);
+}
+
+.forgot-password {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    transition: color var(--transition-fast);
+}
+
+.forgot-password:hover {
+    color: var(--primary);
+}
+
+.login-background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+}
+
+.floating-shape {
+    position: absolute;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    animation: float 20s infinite;
+}
+
+.shape-1 {
+    width: 300px;
+    height: 300px;
+    top: -150px;
+    right: -150px;
+}
+
+.shape-2 {
+    width: 200px;
+    height: 200px;
+    bottom: -100px;
+    left: -100px;
+    animation-delay: -5s;
+}
+
+.shape-3 {
+    width: 150px;
+    height: 150px;
+    bottom: 50px;
+    right: 50px;
+    animation-delay: -10s;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    33% {
+        transform: translateY(-30px) rotate(120deg);
+    }
+    66% {
+        transform: translateY(30px) rotate(240deg);
+    }
+}
+
+/* Responsividade */
+@media (max-width: 480px) {
+    .login-card {
+        padding: var(--spacing-xl);
+    }
+    
+    .login-logo {
+        height: 40px;
+    }
+    
+    .login-header h1 {
+        font-size: var(--font-size-lg);
+    }
+}
+</style>
+
+<script>
+function togglePassword() {
+    const password = document.getElementById('senha');
+    const icon = document.querySelector('.password-toggle i');
+    
+    if (password.type === 'password') {
+        password.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+    } else {
+        password.type = 'password';
+        icon.className = 'fas fa-eye';
+    }
+}
+</script>
+{% endblock %}

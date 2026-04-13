@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Primeiro Acesso - SIGEC{% endblock %}
+
+{% block public_content %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <img src="{{ url_for('static', filename='images/logo-iffar.png') }}" alt="IFFar" class="login-logo">
+            <h2>Primeiro Acesso</h2>
+            <p>Olá, {{ usuario.nome }}! Defina sua senha para continuar.</p>
+        </div>
+        
+        <form method="POST" class="login-form" id="formPrimeiroAcesso">
+            <div class="form-group">
+                <label for="senha">Nova Senha</label>
+                <input type="password" name="senha" id="senha" class="form-control" required minlength="6">
+                <small class="form-text text-muted">Mínimo de 6 caracteres</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmar_senha">Confirmar Senha</label>
+                <input type="password" name="confirmar_senha" id="confirmar_senha" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <div class="password-strength" id="passwordStrength">
+                    <div class="strength-bar"></div>
+                    <span class="strength-text"></span>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block">Definir Senha</button>
+        </form>
+        
+        <div class="login-footer">
+            <p><a href="{{ url_for('login') }}">← Voltar para o login</a></p>
+        </div>
+    </div>
+</div>
+
+<style>
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--iffar-green) 0%, var(--iffar-green-light) 100%);
+    padding: 20px;
+}
+
+.login-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 450px;
+    padding: 40px;
+}
+
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-logo {
+    height: 80px;
+    margin-bottom: 20px;
+}
+
+.login-header h2 {
+    margin: 0 0 10px 0;
+    color: #212529;
+}
+
+.login-header p {
+    color: #6c757d;
+    margin: 0;
+}
+
+.login-form .form-group {
+    margin-bottom: 20px;
+}
+
+.login-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.login-form .form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.login-form .form-control:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1);
+}
+
+.btn-block {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+}
+
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-bar {
+    height: 4px;
+    background: #e9ecef;
+    border-radius: 2px;
+    transition: all 0.3s;
+}
+
+.strength-text {
+    font-size: 0.75rem;
+    color: #6c757d;
+    display: inline-block;
+    margin-top: 5px;
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+.login-footer a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.login-footer a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<script>
+document.getElementById('senha')?.addEventListener('input', function() {
+    const senha = this.value;
+    const strengthBar = document.querySelector('.strength-bar');
+    const strengthText = document.querySelector('.strength-text');
+    
+    let forca = 0;
+    if (senha.length >= 6) forca++;
+    if (senha.length >= 10) forca++;
+    if (/[A-Z]/.test(senha)) forca++;
+    if (/[0-9]/.test(senha)) forca++;
+    if (/[^A-Za-z0-9]/.test(senha)) forca++;
+    
+    const porcentagem = (forca / 5) * 100;
+    strengthBar.style.width = porcentagem + '%';
+    
+    if (porcentagem < 20) {
+        strengthBar.style.background = '#dc3545';
+        strengthText.textContent = 'Senha fraca';
+    } else if (porcentagem < 60) {
+        strengthBar.style.background = '#ffc107';
+        strengthText.textContent = 'Senha média';
+    } else {
+        strengthBar.style.background = '#28a745';
+        strengthText.textContent = 'Senha forte';
+    }
+});
+
+document.getElementById('formPrimeiroAcesso')?.addEventListener('submit', function(e) {
+    const senha = document.getElementById('senha').value;
+    const confirmar = document.getElementById('confirmar_senha').value;
+    
+    if (senha !== confirmar) {
+        e.preventDefault();
+        alert('As senhas não coincidem!');
+        return false;
+    }
+    
+    if (senha.length < 6) {
+        e.preventDefault();
+        alert('A senha deve ter pelo menos 6 caracteres!');
+        return false;
+    }
+});
+</script>
+{% endblock %}

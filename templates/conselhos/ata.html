@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Ata do Conselho - {{ conselho.turma.nome }} - IFFar{% endblock %}
+
+{% block page_title %}
+    Ata do Conselho
+    <small style="font-size: 0.8rem; margin-left: 15px; color: rgba(255,255,255,0.9);">
+        {{ conselho.turma.nome }} - {{ conselho.data_fim.strftime('%d/%m/%Y') }}
+    </small>
+{% endblock %}
+
+{% block header_actions %}
+<div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('ver_conselho', id=conselho.id) }}" class="btn btn-outline">
+        <i class="fas fa-arrow-left"></i> Voltar
+    </a>
+    <a href="{{ url_for('download_ata_conselho', id=conselho.id) }}" class="btn btn-success">
+        <i class="fas fa-download"></i> Download Ata
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="ata-container">
+    <div class="ata-card">
+        <div class="ata-header">
+            <img src="{{ url_for('static', filename='images/logo-iffar.png') }}" alt="IFFar" class="ata-logo">
+            <h1>INSTITUTO FEDERAL FARROUPILHA</h1>
+            <h2>SISTEMA DE CONSELHO DE CLASSE</h2>
+        </div>
+        
+        <div class="ata-content">
+            <pre class="ata-texto">{{ ata }}</pre>
+        </div>
+        
+        <div class="ata-footer">
+            <p>Documento oficial gerado pelo Sistema de Conselho de Classe do IFFar</p>
+            <p>Em caso de dúvidas, consulte a coordenação pedagógica</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.ata-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.ata-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.ata-header {
+    background: var(--primary);
+    color: white;
+    padding: 30px;
+    text-align: center;
+}
+
+.ata-logo {
+    max-height: 80px;
+    margin-bottom: 20px;
+    filter: brightness(0) invert(1);
+}
+
+.ata-header h1 {
+    margin: 0 0 5px 0;
+    font-size: 1.5rem;
+}
+
+.ata-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: normal;
+    opacity: 0.9;
+}
+
+.ata-content {
+    padding: 30px;
+    background: #f8f9fa;
+}
+
+.ata-texto {
+    background: white;
+    padding: 30px;
+    border-radius: var(--radius-md);
+    border: 1px solid #e9ecef;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+    margin: 0;
+}
+
+.ata-footer {
+    background: #e9ecef;
+    padding: 20px 30px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.9rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.ata-footer p {
+    margin: 5px 0;
+}
+
+@media (max-width: 768px) {
+    .ata-container {
+        padding: 16px;
+    }
+    
+    .ata-header {
+        padding: 20px;
+    }
+    
+    .ata-content {
+        padding: 20px;
+    }
+    
+    .ata-texto {
+        padding: 20px;
+        font-size: 0.85rem;
+    }
+}
+</style>
+{% endblock %}

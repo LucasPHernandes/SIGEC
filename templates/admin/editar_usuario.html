@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Usuário - SIGEC{% endblock %}
+
+{% block page_title %}Editar Usuário{% endblock %}
+
+{% block header_actions %}
+<a href="{{ url_for('admin_usuarios') }}" class="btn btn-outline">
+    <i class="fas fa-arrow-left"></i> Voltar
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="edit-usuario-container">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-user-edit"></i> Editar Usuário: {{ usuario.nome }}</h3>
+            <span class="badge badge-{{ usuario.role }}">{{ usuario.role }}</span>
+        </div>
+        
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin_editar_usuario', id=usuario.id) }}" id="formEditarUsuario">
+                <!-- Informações Básicas -->
+                <div class="form-section">
+                    <h4><i class="fas fa-info-circle"></i> Informações Básicas</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nome">Nome *</label>
+                            <input type="text" name="nome" id="nome" class="form-control" value="{{ usuario.nome }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">E-mail *</label>
+                            <input type="email" name="email" id="email" class="form-control" value="{{ usuario.email }}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="role">Role / Perfil *</label>
+                            <select name="role" id="role" class="form-control" required>
+                                <option value="admin" {% if usuario.role == 'admin' %}selected{% endif %}>Administrador</option>
+                                <option value="direcao" {% if usuario.role == 'direcao' %}selected{% endif %}>Direção</option>
+                                <option value="pedagogico" {% if usuario.role == 'pedagogico' %}selected{% endif %}>Pedagógico</option>
+                                <option value="professor" {% if usuario.role == 'professor' %}selected{% endif %}>Professor</option>
+                                <option value="assistente_estudantil" {% if usuario.role == 'assistente_estudantil' %}selected{% endif %}>Assistente Estudantil</option>
+                                <option value="saude" {% if usuario.role == 'saude' %}selected{% endif %}>Saúde</option>
+                                <option value="coordenador" {% if usuario.role == 'coordenador' %}selected{% endif %}>Coordenador</option>
+                                <option value="usuario" {% if usuario.role == 'usuario' %}selected{% endif %}>Usuário</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="setor_id">Setor</label>
+                            <select name="setor_id" id="setor_id" class="form-control">
+                                <option value="">Nenhum</option>
+                                {% for setor in setores %}
+                                <option value="{{ setor.id }}" {% if usuario.setor_id == setor.id %}selected{% endif %}>
+                                    {{ setor.nome }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Alterar Senha -->
+                <div class="form-section">
+                    <h4><i class="fas fa-key"></i> Alterar Senha</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="senha">Nova Senha</label>
+                            <input type="password" name="senha" id="senha" class="form-control" placeholder="Deixe em branco para manter a atual">
+                            <small class="form-text text-muted">Mínimo de 6 caracteres. Recomendado usar letras, números e símbolos.</small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="confirmar_senha">Confirmar Nova Senha</label>
+                            <input type="password" name="confirmar_senha" id="confirmar_senha" class="form-control" placeholder="Digite a nova senha novamente">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botões -->
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <a href="{{ url_for('admin_usuarios') }}" class="btn btn-outline">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    {% if usuario.id != current_user.id %}
+                    <button type="button" class="btn btn-danger" onclick="confirmarExclusao()">
+                        <i class="fas fa-trash-alt"></i> Excluir Usuário
+                    </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Informações Adicionais -->
+    <div class="info-card">
+        <h4><i class="fas fa-info-circle"></i> Informações do Usuário</h4>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">ID:</span>
+                <span class="info-value">{{ usuario.id }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Matrícula:</span>
+                <span class="info-value">{{ usuario.matricula or 'Não informada' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Criado em:</span>
+                <span class="info-value">{{ usuario.created_at.strftime('%d/%m/%Y %H:%M') if usuario.created_at else 'Não disponível' }}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span class="info-value">
+                    {% if usuario.ativo %}
+                    <span class="badge badge-success">Ativo</span>
+                    {% else %}
+                    <span class="badge badge-danger">Inativo</span>
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmação de exclusão -->
+<div id="modalExclusao" class="modal">
+    <div class="modal-content">
+        <h3><i class="fas fa-exclamation-triangle"></i> Confirmar Exclusão</h3>
+        <p>Deseja realmente excluir o usuário <strong>{{ usuario.nome }}</strong>?</p>
+        <p class="text-danger">Esta ação não pode ser desfeita!</p>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="fecharModalExclusao()">Cancelar</button>
+            <form action="{{ url_for('admin_excluir_usuario', id=usuario.id) }}" method="POST" style="display: inline;">
+                <button type="submit" class="btn btn-danger">Sim, excluir</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+
+    .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+
+    align-items: center;
+    justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        width: 500px;
+        max-width: 90%;
+    }
+
+.edit-usuario-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.card {
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+.card-header {
+    padding: 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-header h3 i {
+    color: var(--primary);
+}
+
+.card-body {
+    padding: 30px;
+}
+
+.form-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.form-section h4 {
+    margin: 0 0 20px 0;
+    color: #495057;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-section h4 i {
+    color: var(--primary);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #495057;
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e9ecef;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 66, 12, 0.1);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    margin-top: 5px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Info Card */
+.info-card {
+    background: #f8f9fa;
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.info-card h4 {
+    margin: 0 0 15px 0;
+    font-size: 1rem;
+    color: #495057;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.info-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.info-value {
+    font-weight: 500;
+    color: #212529;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-admin { background: #dc3545; color: white; }
+.badge-direcao { background: #17a2b8; color: white; }
+.badge-pedagogico { background: #28a745; color: white; }
+.badge-professor { background: #ffc107; color: #212529; }
+.badge-success { background: #28a745; color: white; }
+.badge-danger { background: #dc3545; color: white; }
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+}
+</style>
+
+<script>
+function confirmarExclusao() {
+    document.getElementById('modalExclusao').style.display = 'block';
+}
+
+function fecharModalExclusao() {
+    document.getElementById('modalExclusao').style.display = 'none';
+}
+
+// Validação do formulário
+document.getElementById('formEditarUsuario')?.addEventListener('submit', function(e) {
+    const senha = document.getElementById('senha').value;
+    const confirmar = document.getElementById('confirmar_senha').value;
+    
+    if (senha && senha !== confirmar) {
+        e.preventDefault();
+        alert('As senhas não coincidem!');
+        return false;
+    }
+    
+    if (senha && senha.length < 6) {
+        e.preventDefault();
+        alert('A senha deve ter pelo menos 6 caracteres!');
+        return false;
+    }
+});
+
+// Fechar modal ao clicar fora
+window.onclick = function(event) {
+    const modal = document.getElementById('modalExclusao');
+    if (event.target == modal) {
+        modal.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}
