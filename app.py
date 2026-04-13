@@ -42,7 +42,10 @@ from models import (
     ConselhoVersao, ConselhoAlunoVersao, ModeloEncaminhamento
 )
 
-app = Flask(__name__)
+app = Flask(__name__,
+        static_url_path='/static_sigec',
+        static_folder='static_sigec'
+    )
 class PrefixMiddleware:
     def __init__(self, app, prefix='/sigec'):
         self.app = app
